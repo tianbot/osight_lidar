@@ -28,32 +28,42 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "osight_lidar.h"
+#ifndef _UDP_H_
+#define _UDP_H_
 
-OsightLidar::OsightLidar(ros::NodeHandle *nh) : nh_(*nh)
-{
-    seq_ = 0;
-    nh_.param<std::string>("frame_id", frame_id_, DEFAULT_FRAME_ID);
-    nh_.param<std::string>("lidar_ip", lidar_ip_, DEFAULT_LIDAR_IP);
-    nh_.param<int>("lidar_port", lidar_port_, DEFAULT_LIDAR_PORT);
-    nh_.param<int>("host_port", host_port_, DEFAULT_HOST_PORT);
-    scan_pub_ = nh_.advertise<sensor_msgs::LaserScan>("scan", 1);
-}
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <pthread.h>
+#include "stdint.h"
+#include "stdio.h"
+#include <string.h>
+#include "boost/bind.hpp"
+#include "boost/function.hpp"
 
-void OsightLidar::lidarDataCallback(vector<float> ranges, vector<float> intensities, struct LidarParam lidar_param)
+//using namespace boost;
+
+typedef boost::function<void(uint8_t *data, unsigned int data_len)> udp_recv_cb_t;
+#define UDP_RECV_BUFF_LEN 2048
+
+class Udp
 {
-    sensor_msgs::LaserScan scan_msg;
-    scan_msg.header.seq = seq_++;
-    scan_msg.header.stamp = ros::Time::now();
-    scan_msg.header.frame_id = frame_id_;
-    scan_msg.angle_min = lidar_param.angle_min;
-    scan_msg.angle_max = lidar_param.angle_max;
-    scan_msg.angle_increment = lidar_param.angle_increment;
-    scan_msg.time_increment = lidar_param.time_increment;
-    scan_msg.scan_time = lidar_param.scan_time;
-    scan_msg.range_min = lidar_param.range_min;
-    scan_msg.range_max = lidar_param.range_max;
-    scan_msg.ranges = ranges;
-    scan_msg.intensities = intensities;
-    scan_pub_.publish(scan_msg);
-}
+public:
+    Udp();
+    bool init(const char *client_ip, int client_port, int server_port, udp_recv_cb_t cb);
+    bool send(uint8_t *buff, uint16_t len);
+private:
+    int socket_fd_;
+    socklen_t client_addr_length_;
+    socklen_t server_addr_length_;
+    struct sockaddr_in server_addr_;
+    struct sockaddr_in client_addr_;
+
+    bool running_;
+    pthread_t recv_thread_;
+    static void *udpRecv(void *p);
+    udp_recv_cb_t dataCallback_;
+};
+
+#endif

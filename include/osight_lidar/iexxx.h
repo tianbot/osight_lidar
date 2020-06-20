@@ -32,43 +32,17 @@
 #define _IEXXX_H_
 
 #include "osight_lidar.h"
-#include <pthread.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
-#define DEFAULT_LIDAR_IP "192.168.1.10"
-#define DEFAULT_LIDAR_PORT 6500
-#define DEFAULT_HOST_PORT 5500
-
-#define LIDAR_RECV_BUFF_SIZE 2048
 
 class IExxx : public OsightLidar
 {
 public:
     IExxx(ros::NodeHandle *nh);
     //~IExxx();
-
-    bool init(void);
-    void updateParam(void);
+    virtual bool init(void);
+    virtual void updateParam(void);
 
 private:
-    struct LidarParam iexxx_param_;
     void dataCallback(uint8_t *buff, int len);
-    std::string lidar_ip_;
-    int host_port_;
-    int lidar_port_;
-
-    int socket_fd_;
-    socklen_t lidar_addr_length_;
-    socklen_t host_addr_length_;
-    struct sockaddr_in host_addr_;
-    struct sockaddr_in lidar_addr_;
-
-    pthread_t recv_thread_;
-    static void *lidarRecv(void *p);
-    uint32_t running_;
 };
 
 #endif
