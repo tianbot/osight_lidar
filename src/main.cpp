@@ -41,6 +41,7 @@ int main(int argc, char *argv[])
     {
         IExxx iexxx(&nh);
         iexxx.init();
+        iexxx.updateParam();
     }
 
     ros::Rate loop_rate(10);
