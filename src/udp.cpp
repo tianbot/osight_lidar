@@ -103,13 +103,14 @@ bool Udp::init(const char *client_ip, int client_port, int server_port, udp_recv
         return false;
     }
 
-    running_ = 1;
+    running_ = true;
 
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
     ret = pthread_create(&recv_thread_, &attr, udpRecv, this);
     if (0 != ret)
     {
+        running_ = false;
         perror("pthread_create() error");
         ::close(socket_fd_);
         return false;
@@ -140,4 +141,17 @@ bool Udp::send(uint8_t *buff, uint16_t len)
         sended_len += retlen;
     }
     return true;
+}
+
+void Udp::close(void)
+{
+    running_ = false;
+    if (socket_fd_ > 0)
+    {
+        ::close(socket_fd_);
+    }
+    if (0 != recv_thread_)
+    {
+        pthread_join(recv_thread_, NULL);
+    }
 }

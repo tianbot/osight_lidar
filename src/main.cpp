@@ -43,6 +43,11 @@ int main(int argc, char *argv[])
         iexxx.init();
         iexxx.updateParam();
     }
+    else
+    {
+        ROS_INFO("lidar [%s] driver not implemented", lidar_model.c_str());
+        exit(-1);
+    }
 
     ros::Rate loop_rate(10);
 

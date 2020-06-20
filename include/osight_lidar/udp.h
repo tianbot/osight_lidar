@@ -53,6 +53,7 @@ public:
     Udp();
     bool init(const char *client_ip, int client_port, int server_port, udp_recv_cb_t cb);
     bool send(uint8_t *buff, uint16_t len);
+    void close(void);
 private:
     int socket_fd_;
     socklen_t client_addr_length_;

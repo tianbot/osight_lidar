@@ -32,17 +32,19 @@
 #define _IEXXX_H_
 
 #include "osight_lidar.h"
+#include "udp.h"
 
 class IExxx : public OsightLidar
 {
 public:
     IExxx(ros::NodeHandle *nh);
-    //~IExxx();
+    ~IExxx();
     virtual bool init(void);
     virtual void updateParam(void);
 
 private:
     void dataCallback(uint8_t *buff, int len);
+    Udp udp_;
 };
 
 #endif

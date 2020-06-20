@@ -29,16 +29,19 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "iexxx.h"
-#include "udp.h"
 
 IExxx::IExxx(ros::NodeHandle *nh) : OsightLidar(nh)
 {
 }
 
+IExxx::~IExxx()
+{
+    udp_.close();
+}
+
 bool IExxx::init(void)
 {
-    Udp udp;
-    udp.init(lidar_ip_.c_str(), lidar_port_, host_port_, boost::bind(&IExxx::dataCallback, this, _1, _2));
+    udp_.init(lidar_ip_.c_str(), lidar_port_, host_port_, boost::bind(&IExxx::dataCallback, this, _1, _2));
 }
 
 void IExxx::dataCallback(uint8_t *buff, int len)
