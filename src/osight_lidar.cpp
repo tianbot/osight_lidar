@@ -57,3 +57,62 @@ void OsightLidar::lidarDataCallback(vector<float> ranges, vector<float> intensit
     scan_msg.intensities = intensities;
     scan_pub_.publish(scan_msg);
 }
+
+void OsightLidar::invertUint8(uint8_t *dest_buf, uint8_t *src_buf)
+{
+    int i;
+    uint8_t tmp;
+    tmp = 0;
+    for (i = 0; i < 8; i++)
+    {
+        if (*src_buf & (1 << i))
+        {
+            tmp |= 1 << (7 - i);
+        }
+    }
+    *dest_buf = tmp;
+}
+void OsightLidar::invertUint16(uint16_t *dest_buf, uint16_t *src_buf)
+{
+    int i;
+    uint16_t tmp;
+    tmp = 0;
+    for (i = 0; i < 16; i++)
+    {
+        if (*src_buf & (1 << i))
+        {
+            tmp |= 1 << (15 - i);
+        }
+    }
+    *dest_buf = tmp;
+}
+
+uint16_t OsightLidar::crc16(uint8_t *buff, uint32_t len)
+{
+    uint16_t wCRCin = 0xFFFF;
+    uint16_t wCPoly = 0x8005;
+    uint8_t wChar = 0;
+    int i;
+
+    while (len--)
+    {
+        wChar = *(buff++);
+        invertUint8(&wChar, &wChar);
+        wCRCin = wCRCin ^ (wChar << 8);
+        for (i = 0; i < 8; i++)
+        {
+            if (wCRCin & 0x8000)
+            {
+                wCRCin = (wCRCin << 1) ^ wCPoly;
+            }
+            else
+            {
+                wCRCin = wCRCin << 1;
+            }
+        }
+    }
+    invertUint16(&wCRCin, &wCRCin);
+    //wCRCin = HTONS(wCRCin);
+
+    return wCRCin;
+}

@@ -67,16 +67,18 @@ public:
 protected:
     ros::NodeHandle nh_;
     void lidarDataCallback(vector<float> ranges, vector<float> intensities, struct LidarParam lidar_param);
+    uint16_t crc16(uint8_t *buff, uint32_t len);
     std::string lidar_ip_;
     int host_port_;
     int lidar_port_;
-
     struct LidarParam lidar_param_;
 
 private:
     uint32_t seq_;
     std::string frame_id_;
     ros::Publisher scan_pub_;
+    void invertUint8(uint8_t *dest_buf, uint8_t *src_buf);
+    void invertUint16(uint16_t *dest_buf, uint16_t *src_buf);
 };
 
 #endif
