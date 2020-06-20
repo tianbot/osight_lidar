@@ -36,12 +36,13 @@ int main(int argc, char *argv[])
     std::string lidar_model;
     ros::init(argc, argv, "osight_lidar_node");
     ros::NodeHandle nh("osight_lidar");
-    nh_.param<std::string>("lidar_model", lidar_model, DEFAULT_LIDAR_MODEL);
-    if(lidar_model == "iexxx")
+    nh.param<std::string>("lidar_model", lidar_model, DEFAULT_LIDAR_MODEL);
+    if (lidar_model == "iexxx")
     {
         IExxx iexxx(&nh);
+        iexxx.init();
     }
-    
+
     ros::Rate loop_rate(10);
 
     while (ros::ok())
