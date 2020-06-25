@@ -36,12 +36,46 @@
 #include "sensor_msgs/LaserScan.h"
 #include <vector>
 
+#define DEG2RAD (M_PI / 180.0)
+
 #define DEFAULT_LIDAR_MODEL "iexxx"
 #define DEFAULT_FRAME_ID "laser"
 
 #define DEFAULT_LIDAR_IP "192.168.1.10"
 #define DEFAULT_LIDAR_PORT 6500
 #define DEFAULT_HOST_PORT 5500
+
+#define PACK_1_BYTE(pucBuff, ucData) \
+    {                                \
+        *pucBuff = ucData;           \
+        pucBuff++;                   \
+    }
+#define PACK_2_BYTE(pucBuff, usData)          \
+    {                                         \
+        *(uint16_t *)pucBuff = htons(usData); \
+        pucBuff += sizeof(uint16_t);          \
+    }
+#define PACK_4_BYTE(pucBuff, ulData)          \
+    {                                         \
+        *(uint32_t *)pucBuff = htonl(ulData); \
+        pucBuff += sizeof(uint32_t);          \
+    }
+
+#define UNPACK_1_BYTE(pucBuff, ucData) \
+    {                                  \
+        ucData = *pucBuff;             \
+        pucBuff++;                     \
+    }
+#define UNPACK_2_BYTE(pucBuff, usData)        \
+    {                                         \
+        usData = ntohs(*(uint16_t *)pucBuff); \
+        pucBuff += sizeof(uint16_t);          \
+    }
+#define UNPACK_4_BYTE(pucBuff, ulData)        \
+    {                                         \
+        ulData = ntohl(*(uint32_t *)pucBuff); \
+        pucBuff += sizeof(uint32_t);          \
+    }
 
 using namespace std;
 
@@ -68,6 +102,8 @@ protected:
     ros::NodeHandle nh_;
     void lidarDataCallback(vector<float> ranges, vector<float> intensities, struct LidarParam lidar_param);
     uint16_t crc16(uint8_t *buff, uint32_t len);
+    void info(const char *fmt, ...);
+    void error(const char *fmt, ...);
     std::string lidar_ip_;
     int host_port_;
     int lidar_port_;

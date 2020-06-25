@@ -34,6 +34,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include "net/if.h"
 #include <arpa/inet.h>
 #include <pthread.h>
 #include "stdint.h"

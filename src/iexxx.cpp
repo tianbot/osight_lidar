@@ -32,6 +32,15 @@
 
 IExxx::IExxx(ros::NodeHandle *nh) : OsightLidar(nh)
 {
+    ranges.clear();
+    intensities.clear();
+    lidar_param_.range_max = DEFAULT_MAX_RANGES;
+    lidar_param_.range_min = DEFAULT_MIN_RANGES;
+    lidar_param_.scan_time = DEFAULT_SCAN_TIME;
+    lidar_param_.angle_min = DEFAULT_ANGLE_MIN;
+    lidar_param_.angle_max = DEFAULT_ANGLE_MAX;
+    lidar_param_.time_increment = DEFAULT_TIME_INCREMENT;
+    lidar_param_.angle_increment = DEFAULT_ANGLE_INCREMENT;
 }
 
 IExxx::~IExxx()
@@ -41,14 +50,144 @@ IExxx::~IExxx()
 
 bool IExxx::init(void)
 {
-    udp_.init(lidar_ip_.c_str(), lidar_port_, host_port_, boost::bind(&IExxx::dataCallback, this, _1, _2));
-}
-
-void IExxx::dataCallback(uint8_t *buff, int len)
-{
+    return udp_.init(lidar_ip_.c_str(), lidar_port_, host_port_, boost::bind(&IExxx::dataCallback, this, _1, _2));
 }
 
 void IExxx::updateParam(void)
 {
+    struct ParamSyncReq req;
+    req.msg_id = htonl(PARA_SYNC_REQ);
+    req.crc = htons(crc16((uint8_t *)&req, sizeof(req) - 2));
+    udp_.send((uint8_t *)&req, sizeof(req));
+}
 
+void IExxx::dataCallback(uint8_t *buff, int len)
+{
+    uint32_t msg_id = (buff[0] << 24) + (buff[1] << 16) + (buff[2] << 8) + buff[3];
+    uint16_t crc = crc16(buff, len - sizeof(uint16_t));
+    if (crc != (buff[len - 1] << 8) + (buff[len - 2]))
+    {
+        error("crc error %04x, %02x, %02x\r\n", crc, buff[len - 2], buff[len - 1]);
+        return;
+    }
+    switch (msg_id)
+    {
+    case PARA_SYNC_RSP:
+        {
+            struct ParamSyncRsp *p = (struct ParamSyncRsp *)buff;
+            if (lidar_param_.angle_min != p->start_angle / 1000.0 * DEG2RAD - M_PI / 2)
+            {
+                lidar_param_.angle_min = p->start_angle / 1000.0 * DEG2RAD - M_PI / 2;
+                info("lidar min angle update: %f", lidar_param_.angle_min);
+            }
+            if (lidar_param_.angle_max != p->stop_angle / 1000.0 * DEG2RAD - M_PI / 2)
+            {
+                lidar_param_.angle_max = p->stop_angle / 1000.0 * DEG2RAD - M_PI / 2;
+                info("lidar max angle update: %f", lidar_param_.angle_max);
+            }
+            if (lidar_param_.angle_increment != p->angular_resolution / 10000000.0 * DEG2RAD)
+            {
+                lidar_param_.angle_increment = p->angular_resolution / 10000000.0 * DEG2RAD;
+                info("lidar angle increment update: %f", lidar_param_.angle_increment);
+            }
+            if (lidar_param_.range_max != p->max_distance)
+            {
+                lidar_param_.range_max = p->max_distance;
+                info("lidar max range update: %f", lidar_param_.range_max);
+            }
+            if (lidar_param_.scan_time != 1.0 / p->speed)
+            {
+                lidar_param_.scan_time = 1.0 / p->speed;
+                info("lidar scan time update: %f", lidar_param_.scan_time);
+            }
+            if (lidar_param_.time_increment != lidar_param_.scan_time / (2 * M_PI / lidar_param_.angle_increment))
+            {
+                lidar_param_.time_increment = lidar_param_.scan_time / (2 * M_PI / lidar_param_.angle_increment);
+                info("lidar time increment update: %f", lidar_param_.time_increment);
+            }
+        }
+        break;
+    case PARA_CHANGED_IND_RSP:
+        break;
+    case PARA_DEVICE_CONFIGURATION_RSP:
+        break;
+    case PARA_ALARM_CONFIGURATION_RSQ:
+        break;
+    case MEAS_DATA_PACKAGE_RSP:
+        {
+            struct MeasureDataRsp *p = (struct MeasureDataRsp *)buff;
+            int i;
+            uint8_t *p_data = p->data;
+            uint32_t range_data;
+            uint32_t intensity_data;
+            p->msg_id = ntohl(p->msg_id);
+            p->serial_num = ntohl(p->serial_num);
+            p->product_num = ntohl(p->product_num);
+            p->time_stamp = ntohl(p->time_stamp);
+            p->start_angle = (int32_t)ntohl(p->start_angle);
+            p->stop_angle = (int32_t)ntohl(p->stop_angle);
+            p->micro_second = ntohl(p->micro_second);
+            p->angular_resolution = ntohl(p->angular_resolution);
+            p->vertical_angle = ntohs(p->vertical_angle);
+            p->max_point_num = ntohs(p->max_point_num);
+            p->current_point_num = ntohs(p->current_point_num);
+
+            if (lidar_param_.angle_min != p->start_angle / 1000.0 * DEG2RAD - M_PI / 2)
+            {
+                lidar_param_.angle_min = p->start_angle / 1000.0 * DEG2RAD - M_PI / 2;
+                info("lidar min angle update: %f", lidar_param_.angle_min);
+            }
+            if (lidar_param_.angle_max != p->stop_angle / 1000.0 * DEG2RAD - M_PI / 2)
+            {
+                lidar_param_.angle_max = p->stop_angle / 1000.0 * DEG2RAD - M_PI / 2;
+                info("lidar max angle update: %f", lidar_param_.angle_max);
+            }
+            if (lidar_param_.angle_increment != p->angular_resolution / 10000000.0 * DEG2RAD)
+            {
+                lidar_param_.angle_increment = p->angular_resolution / 10000000.0 * DEG2RAD;
+                info("lidar angle increment update: %f", lidar_param_.angle_increment);
+            }
+            if (p->pkg_num == 0)
+            {
+                ranges.clear();
+                intensities.clear();
+            }
+
+            for (i = 0; i < p->current_point_num; i++)
+            {
+                UNPACK_4_BYTE(p_data, range_data);
+                ranges.push_back(range_data / 10000.0);
+                if (p->intensity_status == 2)
+                {
+                    UNPACK_2_BYTE(p_data, intensity_data);
+                    intensities.push_back(intensity_data);
+                }
+                else if (p->intensity_status == 1)
+                {
+                    UNPACK_1_BYTE(p_data, intensity_data);
+                    intensities.push_back(intensity_data);
+                }
+            }
+
+            if (p->total_pkgs == p->pkg_num + 1)
+            {
+                lidarDataCallback(ranges, intensities, lidar_param_);
+            }
+        }
+        break;
+    case LOG_GET_RSP:
+        break;
+    case TIME_REPORT_INF:
+        break;
+    case ACTIVE_FILTER_RSP:
+        break;
+    case SET_CALIBRATION_MODE_RSP:
+        break;
+    case SET_NET_MODE_RSP:
+        break;
+    case SET_STATIC_IP_RSP:
+        break;
+    default:
+        break;
+    }
 }

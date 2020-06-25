@@ -58,6 +58,16 @@ void OsightLidar::lidarDataCallback(vector<float> ranges, vector<float> intensit
     scan_pub_.publish(scan_msg);
 }
 
+void OsightLidar::info(const char *fmt, ...)
+{
+    ROS_INFO(fmt);
+}
+
+void OsightLidar::error(const char *fmt, ...)
+{
+    ROS_ERROR(fmt);
+}
+
 void OsightLidar::invertUint8(uint8_t *dest_buf, uint8_t *src_buf)
 {
     int i;

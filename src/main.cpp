@@ -37,19 +37,25 @@ int main(int argc, char *argv[])
     ros::init(argc, argv, "osight_lidar_node");
     ros::NodeHandle nh("osight_lidar");
     nh.param<std::string>("lidar_model", lidar_model, DEFAULT_LIDAR_MODEL);
+
+    ros::Rate loop_rate(10);
+
     if (lidar_model == "iexxx")
     {
         IExxx iexxx(&nh);
         iexxx.init();
         iexxx.updateParam();
+        while (ros::ok())
+        {
+            ros::spinOnce();
+            loop_rate.sleep();
+        }
     }
     else
     {
         ROS_INFO("lidar [%s] driver not implemented", lidar_model.c_str());
         exit(-1);
     }
-
-    ros::Rate loop_rate(10);
 
     while (ros::ok())
     {

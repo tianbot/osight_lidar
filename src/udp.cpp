@@ -89,7 +89,8 @@ bool Udp::init(const char *client_ip, int client_port, int server_port, udp_recv
     }
 
     server_addr_.sin_family = AF_INET;
-    server_addr_.sin_addr.s_addr = htonl(INADDR_ANY);
+    //server_addr_.sin_addr.s_addr = htonl(INADDR_ANY);
+    server_addr_.sin_addr.s_addr = inet_addr("192.168.1.100");
     server_addr_.sin_port = htons(server_port);
 
     client_addr_.sin_family = AF_INET;
