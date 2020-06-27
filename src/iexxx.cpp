@@ -61,6 +61,24 @@ void IExxx::updateParam(void)
     udp_.send((uint8_t *)&req, sizeof(req));
 }
 
+void IExxx::startTransferData(void)
+{
+    struct StartMeasureTransmissionReq req;
+    req.msg_id = htonl(START_MEASURE_TRANSMISSION_REQ);
+    req.function_id = START_DATA_TRANSFER;
+    req.crc = htons(crc16((uint8_t *)&req, sizeof(req) - 2));
+    udp_.send((uint8_t *)&req, sizeof(req));
+}
+
+void IExxx::stopTransferData(void)
+{
+    struct StartMeasureTransmissionReq req;
+    req.msg_id = htonl(START_MEASURE_TRANSMISSION_REQ);
+    req.function_id = STOP_DATA_TRANSFER;
+    req.crc = htons(crc16((uint8_t *)&req, sizeof(req) - 2));
+    udp_.send((uint8_t *)&req, sizeof(req));
+}
+
 void IExxx::dataCallback(uint8_t *buff, int len)
 {
     uint32_t msg_id = (buff[0] << 24) + (buff[1] << 16) + (buff[2] << 8) + buff[3];

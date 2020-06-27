@@ -39,8 +39,8 @@
 #define DEFAULT_ANGLE_MIN (-45.0 * DEG2RAD - M_PI / 2)
 #define DEFAULT_ANGLE_MAX (225.0 * DEG2RAD - M_PI / 2)
 #define DEFAULT_ANGLE_INCREMENT (0.25 * DEG2RAD)
-#define DEFAULT_SCAN_TIME (1/25.0)
-#define DEFAULT_TIME_INCREMENT (DEFAULT_SCAN_TIME/(360/0.25))
+#define DEFAULT_SCAN_TIME (1 / 25.0)
+#define DEFAULT_TIME_INCREMENT (DEFAULT_SCAN_TIME / (360 / 0.25))
 
 enum IEXXX_MSG_ID
 {
@@ -65,6 +65,10 @@ enum IEXXX_MSG_ID
     SET_STATIC_IP_REQ = 0x02000A01,
     SET_STATIC_IP_RSP = 0x02000A02,
 };
+
+#define START_DATA_TRANSFER 1
+#define STOP_DATA_TRANSFER 2
+
 #pragma pack(push)
 #pragma pack(1)
 
@@ -170,6 +174,8 @@ public:
     ~IExxx();
     virtual bool init(void);
     virtual void updateParam(void);
+    virtual void startTransferData(void);
+    virtual void stopTransferData(void);
 
 private:
     void dataCallback(uint8_t *buff, int len);

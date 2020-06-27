@@ -97,6 +97,8 @@ public:
     //~OsightLidar();
     virtual bool init(void) = 0;
     virtual void updateParam(void) = 0;
+    virtual void startTransferData(void) = 0;
+    virtual void stopTransferData(void) = 0;
 
 protected:
     ros::NodeHandle nh_;

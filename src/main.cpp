@@ -33,23 +33,21 @@
 
 int main(int argc, char *argv[])
 {
+    OsightLidar *lidar;
+
     std::string lidar_model;
+
     ros::init(argc, argv, "osight_lidar_node");
+
     ros::NodeHandle nh("osight_lidar");
+
     nh.param<std::string>("lidar_model", lidar_model, DEFAULT_LIDAR_MODEL);
 
     ros::Rate loop_rate(10);
 
     if (lidar_model == "iexxx")
     {
-        IExxx iexxx(&nh);
-        iexxx.init();
-        iexxx.updateParam();
-        while (ros::ok())
-        {
-            ros::spinOnce();
-            loop_rate.sleep();
-        }
+        lidar = new IExxx(&nh);
     }
     else
     {
@@ -57,9 +55,36 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
+    int count = 10;
+    while (--count)
+    {
+        if (lidar->init())
+        {
+            ROS_INFO("lidar [%s] init successfully", lidar_model.c_str());
+            break;
+        }
+        else
+        {
+            ROS_WARN("lidar [%s] init failed, retry ...", lidar_model.c_str());
+            ros::Duration(1).sleep();
+        }
+    }
+    if (count == 0)
+    {
+        ROS_ERROR("lidar [%s] init failed, exit", lidar_model.c_str());
+        delete lidar;
+        return -1;
+    }
+
+    lidar->updateParam();
+    lidar->startTransferData();
+
     while (ros::ok())
     {
         ros::spinOnce();
         loop_rate.sleep();
     }
+
+    delete lidar;
+    return 0;
 }
