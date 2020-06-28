@@ -41,6 +41,13 @@ IExxx::IExxx(ros::NodeHandle *nh) : OsightLidar(nh)
     lidar_param_.angle_max = DEFAULT_ANGLE_MAX;
     lidar_param_.time_increment = DEFAULT_TIME_INCREMENT;
     lidar_param_.angle_increment = DEFAULT_ANGLE_INCREMENT;
+    ROS_INFO("lidar default min angle: %f", lidar_param_.angle_min);
+    ROS_INFO("lidar default max angle: %f", lidar_param_.angle_max);
+    ROS_INFO("lidar default angle increment: %f", lidar_param_.angle_increment);
+    ROS_INFO("lidar default min range: %f", lidar_param_.range_min);
+    ROS_INFO("lidar default max range: %f", lidar_param_.range_max);
+    ROS_INFO("lidar default scan time: %f", lidar_param_.scan_time);
+    ROS_INFO("lidar default time increment: %f", lidar_param_.time_increment);
 }
 
 IExxx::~IExxx()
@@ -57,7 +64,7 @@ void IExxx::updateParam(void)
 {
     struct ParamSyncReq req;
     req.msg_id = htonl(PARA_SYNC_REQ);
-    req.crc = htons(crc16((uint8_t *)&req, sizeof(req) - 2));
+    req.crc = crc16((uint8_t *)&req, sizeof(req) - 2);
     udp_.send((uint8_t *)&req, sizeof(req));
 }
 
@@ -66,7 +73,7 @@ void IExxx::startTransferData(void)
     struct StartMeasureTransmissionReq req;
     req.msg_id = htonl(START_MEASURE_TRANSMISSION_REQ);
     req.function_id = START_DATA_TRANSFER;
-    req.crc = htons(crc16((uint8_t *)&req, sizeof(req) - 2));
+    req.crc = crc16((uint8_t *)&req, sizeof(req) - 2);
     udp_.send((uint8_t *)&req, sizeof(req));
 }
 
@@ -85,7 +92,7 @@ void IExxx::dataCallback(uint8_t *buff, int len)
     uint16_t crc = crc16(buff, len - sizeof(uint16_t));
     if (crc != (buff[len - 1] << 8) + (buff[len - 2]))
     {
-        error("crc error %04x, %02x, %02x\r\n", crc, buff[len - 2], buff[len - 1]);
+        ROS_WARN("crc error %04x, %02x, %02x\r\n", crc, buff[len - 2], buff[len - 1]);
         return;
     }
     switch (msg_id)
@@ -93,39 +100,40 @@ void IExxx::dataCallback(uint8_t *buff, int len)
     case PARA_SYNC_RSP:
         {
             struct ParamSyncRsp *p = (struct ParamSyncRsp *)buff;
-            if (lidar_param_.angle_min != p->start_angle / 1000.0 * DEG2RAD - M_PI / 2)
+            if (lidar_param_.angle_min != (float)((int32_t)ntohl(p->start_angle) / 1000.0 * DEG2RAD - M_PI / 2))
             {
-                lidar_param_.angle_min = p->start_angle / 1000.0 * DEG2RAD - M_PI / 2;
-                info("lidar min angle update: %f", lidar_param_.angle_min);
+                lidar_param_.angle_min = (int32_t)ntohl(p->start_angle) / 1000.0 * DEG2RAD - M_PI / 2;
+                ROS_INFO("lidar min angle update: %f", lidar_param_.angle_min);
             }
-            if (lidar_param_.angle_max != p->stop_angle / 1000.0 * DEG2RAD - M_PI / 2)
+            if (lidar_param_.angle_max != (float)(ntohl(p->stop_angle) / 1000.0 * DEG2RAD - M_PI / 2))
             {
-                lidar_param_.angle_max = p->stop_angle / 1000.0 * DEG2RAD - M_PI / 2;
-                info("lidar max angle update: %f", lidar_param_.angle_max);
+                lidar_param_.angle_max = ntohl(p->stop_angle) / 1000.0 * DEG2RAD - M_PI / 2;
+                ROS_INFO("lidar max angle update: %f", lidar_param_.angle_max);
             }
-            if (lidar_param_.angle_increment != p->angular_resolution / 10000000.0 * DEG2RAD)
+            if (lidar_param_.angle_increment != (float)(ntohl(p->angular_resolution) / 10000000.0 * DEG2RAD))
             {
-                lidar_param_.angle_increment = p->angular_resolution / 10000000.0 * DEG2RAD;
-                info("lidar angle increment update: %f", lidar_param_.angle_increment);
+                lidar_param_.angle_increment = ntohl(p->angular_resolution) / 10000000.0 * DEG2RAD;
+                ROS_INFO("lidar angle increment update: %f", lidar_param_.angle_increment);
             }
-            if (lidar_param_.range_max != p->max_distance)
+            if (lidar_param_.range_max != (float)(ntohl(p->max_distance)/10000.0))
             {
-                lidar_param_.range_max = p->max_distance;
-                info("lidar max range update: %f", lidar_param_.range_max);
+                lidar_param_.range_max = ntohl(p->max_distance)/10000.0;
+                ROS_INFO("lidar max range update: %f", lidar_param_.range_max);
             }
-            if (lidar_param_.scan_time != 1.0 / p->speed)
+            if (lidar_param_.scan_time != (float)(1.0 / p->speed))
             {
                 lidar_param_.scan_time = 1.0 / p->speed;
-                info("lidar scan time update: %f", lidar_param_.scan_time);
+                ROS_INFO("lidar scan time update: %f", lidar_param_.scan_time);
             }
-            if (lidar_param_.time_increment != lidar_param_.scan_time / (2 * M_PI / lidar_param_.angle_increment))
+            if (lidar_param_.time_increment != (float)(lidar_param_.scan_time / (2 * M_PI / lidar_param_.angle_increment)))
             {
                 lidar_param_.time_increment = lidar_param_.scan_time / (2 * M_PI / lidar_param_.angle_increment);
-                info("lidar time increment update: %f", lidar_param_.time_increment);
+                ROS_INFO("lidar time increment update: %f", lidar_param_.time_increment);
             }
         }
         break;
     case PARA_CHANGED_IND_RSP:
+        updateParam();
         break;
     case PARA_DEVICE_CONFIGURATION_RSP:
         break;
@@ -150,21 +158,22 @@ void IExxx::dataCallback(uint8_t *buff, int len)
             p->max_point_num = ntohs(p->max_point_num);
             p->current_point_num = ntohs(p->current_point_num);
 
-            if (lidar_param_.angle_min != p->start_angle / 1000.0 * DEG2RAD - M_PI / 2)
+            if (lidar_param_.angle_min != (float)(p->start_angle / 1000.0 * DEG2RAD - M_PI / 2))
             {
                 lidar_param_.angle_min = p->start_angle / 1000.0 * DEG2RAD - M_PI / 2;
-                info("lidar min angle update: %f", lidar_param_.angle_min);
+                ROS_INFO("lidar min angle update: %f", lidar_param_.angle_min);
             }
-            if (lidar_param_.angle_max != p->stop_angle / 1000.0 * DEG2RAD - M_PI / 2)
+            if (lidar_param_.angle_max != (float)(p->stop_angle / 1000.0 * DEG2RAD - M_PI / 2))
             {
                 lidar_param_.angle_max = p->stop_angle / 1000.0 * DEG2RAD - M_PI / 2;
-                info("lidar max angle update: %f", lidar_param_.angle_max);
+                ROS_INFO("lidar max angle update: %f", lidar_param_.angle_max);
             }
-            if (lidar_param_.angle_increment != p->angular_resolution / 10000000.0 * DEG2RAD)
+            if (lidar_param_.angle_increment != (float)(p->angular_resolution / 10000000.0 * DEG2RAD))
             {
                 lidar_param_.angle_increment = p->angular_resolution / 10000000.0 * DEG2RAD;
-                info("lidar angle increment update: %f", lidar_param_.angle_increment);
+                ROS_INFO("lidar angle increment update: %f", lidar_param_.angle_increment);
             }
+
             if (p->pkg_num == 0)
             {
                 ranges.clear();

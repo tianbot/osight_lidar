@@ -34,13 +34,13 @@
 #include "osight_lidar.h"
 #include "udp.h"
 
-#define DEFAULT_MAX_RANGES 500
-#define DEFAULT_MIN_RANGES 0.01
-#define DEFAULT_ANGLE_MIN (-45.0 * DEG2RAD - M_PI / 2)
-#define DEFAULT_ANGLE_MAX (225.0 * DEG2RAD - M_PI / 2)
-#define DEFAULT_ANGLE_INCREMENT (0.25 * DEG2RAD)
-#define DEFAULT_SCAN_TIME (1 / 25.0)
-#define DEFAULT_TIME_INCREMENT (DEFAULT_SCAN_TIME / (360 / 0.25))
+#define DEFAULT_MAX_RANGES ((float)210000/10000)
+#define DEFAULT_MIN_RANGES ((float)0.01)
+#define DEFAULT_ANGLE_MIN ((float)(-45.0 * DEG2RAD - M_PI / 2))
+#define DEFAULT_ANGLE_MAX ((float)(225.0 * DEG2RAD - M_PI / 2))
+#define DEFAULT_ANGLE_INCREMENT ((float)(0.25 * DEG2RAD))
+#define DEFAULT_SCAN_TIME ((float)(1 / 25.0))
+#define DEFAULT_TIME_INCREMENT ((float)(DEFAULT_SCAN_TIME / (360 / 0.25)))
 
 enum IEXXX_MSG_ID
 {

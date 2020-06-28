@@ -104,8 +104,6 @@ protected:
     ros::NodeHandle nh_;
     void lidarDataCallback(vector<float> ranges, vector<float> intensities, struct LidarParam lidar_param);
     uint16_t crc16(uint8_t *buff, uint32_t len);
-    void info(const char *fmt, ...);
-    void error(const char *fmt, ...);
     std::string lidar_ip_;
     int host_port_;
     int lidar_port_;
