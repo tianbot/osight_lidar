@@ -34,13 +34,20 @@ IExxx::IExxx(ros::NodeHandle *nh) : OsightLidar(nh)
 {
     ranges.clear();
     intensities.clear();
-    lidar_param_.range_max = DEFAULT_MAX_RANGES;
-    lidar_param_.range_min = DEFAULT_MIN_RANGES;
-    lidar_param_.scan_time = DEFAULT_SCAN_TIME;
-    lidar_param_.angle_min = DEFAULT_ANGLE_MIN;
-    lidar_param_.angle_max = DEFAULT_ANGLE_MAX;
-    lidar_param_.time_increment = DEFAULT_TIME_INCREMENT;
-    lidar_param_.angle_increment = DEFAULT_ANGLE_INCREMENT;
+    //lidar_param_.range_max = DEFAULT_MAX_RANGES;
+    nh_.param<float>("range_max", lidar_param_.range_max, DEFAULT_MAX_RANGES);
+    //lidar_param_.range_min = DEFAULT_MIN_RANGES;
+    nh_.param<float>("range_min", lidar_param_.range_min, DEFAULT_MIN_RANGES);
+    //lidar_param_.scan_time = DEFAULT_SCAN_TIME;
+    nh_.param<float>("scan_time", lidar_param_.scan_time, DEFAULT_SCAN_TIME);
+    //lidar_param_.angle_min = DEFAULT_ANGLE_MIN;
+    nh_.param<float>("angle_min", lidar_param_.angle_min, DEFAULT_ANGLE_MIN);
+    //lidar_param_.angle_max = DEFAULT_ANGLE_MAX;
+    nh_.param<float>("angle_max", lidar_param_.angle_max, DEFAULT_ANGLE_MAX);
+    //lidar_param_.time_increment = DEFAULT_TIME_INCREMENT;
+    nh_.param<float>("time_increment", lidar_param_.time_increment, DEFAULT_TIME_INCREMENT);
+    //lidar_param_.angle_increment = DEFAULT_ANGLE_INCREMENT;
+    nh_.param<float>("angle_increment", lidar_param_.angle_increment, DEFAULT_ANGLE_INCREMENT);
     ROS_INFO("lidar default min angle: %f", lidar_param_.angle_min);
     ROS_INFO("lidar default max angle: %f", lidar_param_.angle_max);
     ROS_INFO("lidar default angle increment: %f", lidar_param_.angle_increment);

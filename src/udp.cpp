@@ -72,7 +72,7 @@ bool Udp::init(const char *client_ip, int client_port, int server_port, udp_recv
 {
     int ret;
     pthread_attr_t attr;
-
+    //struct ifreq ifr;
     socket_fd_ = socket(AF_INET, SOCK_DGRAM, 0);
     if (socket_fd_ < 0)
     {
@@ -87,10 +87,12 @@ bool Udp::init(const char *client_ip, int client_port, int server_port, udp_recv
         ::close(socket_fd_);
         return false;
     }
-
+    //memset(&ifr, 0x00, sizeof(ifr));
+    //strncpy(ifr.ifr_name, "wlan0", IFNAMSIZ);
+    //setsockopt(socket_fd_, SOL_SOCKET, SO_BINDTODEVICE, (char *)&ifr, sizeof(ifr));
     server_addr_.sin_family = AF_INET;
-    //server_addr_.sin_addr.s_addr = htonl(INADDR_ANY);
-    server_addr_.sin_addr.s_addr = inet_addr("192.168.1.100");
+    server_addr_.sin_addr.s_addr = htonl(INADDR_ANY);
+    //server_addr_.sin_addr.s_addr = inet_addr("192.168.1.100");
     server_addr_.sin_port = htons(server_port);
 
     client_addr_.sin_family = AF_INET;
