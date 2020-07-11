@@ -75,8 +75,9 @@ int main(int argc, char *argv[])
         delete lidar;
         return -1;
     }
-
+    ros::Duration(1).sleep();
     lidar->updateParam();
+    ros::Duration(1).sleep();
     lidar->startTransferData();
 
     while (ros::ok())

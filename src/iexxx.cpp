@@ -59,12 +59,15 @@ IExxx::IExxx(ros::NodeHandle *nh) : OsightLidar(nh)
 
 IExxx::~IExxx()
 {
-    udp_.close();
+    udp_->close();
+    delete udp_;
 }
 
 bool IExxx::init(void)
 {
-    return udp_.init(lidar_ip_.c_str(), lidar_port_, host_port_, boost::bind(&IExxx::dataCallback, this, _1, _2));
+    udp_ = new Udp();
+    ROS_INFO("lidar IP: %s Port: %d", lidar_ip_.c_str(), lidar_port_);
+    return udp_->init(lidar_ip_.c_str(), lidar_port_, host_port_, boost::bind(&IExxx::dataCallback, this, _1, _2));
 }
 
 void IExxx::updateParam(void)
@@ -72,7 +75,7 @@ void IExxx::updateParam(void)
     struct ParamSyncReq req;
     req.msg_id = htonl(PARA_SYNC_REQ);
     req.crc = crc16((uint8_t *)&req, sizeof(req) - 2);
-    udp_.send((uint8_t *)&req, sizeof(req));
+    udp_->send((uint8_t *)&req, sizeof(req));
 }
 
 void IExxx::startTransferData(void)
@@ -81,7 +84,7 @@ void IExxx::startTransferData(void)
     req.msg_id = htonl(START_MEASURE_TRANSMISSION_REQ);
     req.function_id = START_DATA_TRANSFER;
     req.crc = crc16((uint8_t *)&req, sizeof(req) - 2);
-    udp_.send((uint8_t *)&req, sizeof(req));
+    udp_->send((uint8_t *)&req, sizeof(req));
 }
 
 void IExxx::stopTransferData(void)
@@ -90,7 +93,7 @@ void IExxx::stopTransferData(void)
     req.msg_id = htonl(START_MEASURE_TRANSMISSION_REQ);
     req.function_id = STOP_DATA_TRANSFER;
     req.crc = htons(crc16((uint8_t *)&req, sizeof(req) - 2));
-    udp_.send((uint8_t *)&req, sizeof(req));
+    udp_->send((uint8_t *)&req, sizeof(req));
 }
 
 void IExxx::dataCallback(uint8_t *buff, int len)
@@ -106,6 +109,7 @@ void IExxx::dataCallback(uint8_t *buff, int len)
     {
     case PARA_SYNC_RSP:
         {
+            ROS_INFO("Lidar parameter update.");
             struct ParamSyncRsp *p = (struct ParamSyncRsp *)buff;
             if (lidar_param_.angle_min != (float)((int32_t)ntohl(p->start_angle) / 1000.0 * DEG2RAD - M_PI / 2))
             {

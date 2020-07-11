@@ -179,7 +179,7 @@ public:
 
 private:
     void dataCallback(uint8_t *buff, int len);
-    Udp udp_;
+    Udp *udp_;
     vector<float> ranges;
     vector<float> intensities;
 };
