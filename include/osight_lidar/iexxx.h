@@ -34,6 +34,10 @@
 #include "osight_lidar.h"
 #include "udp.h"
 
+#define DEFAULT_LIDAR_IP "192.168.1.10"
+#define DEFAULT_LIDAR_PORT 6500
+#define DEFAULT_HOST_PORT 5500
+
 #define DEFAULT_MAX_RANGES ((float)210000/10000)
 #define DEFAULT_MIN_RANGES ((float)0.01)
 #define DEFAULT_ANGLE_MIN ((float)(-45.0 * DEG2RAD - M_PI / 2))
@@ -165,6 +169,26 @@ struct MeasureDataRsp
     uint16_t current_point_num;
     uint8_t data[]; //the last 2 byte are crc code
 };
+
+struct IPConfigReq
+{
+    uint32_t msg_id;
+    uint32_t dev_ip;
+    uint32_t dev_port;
+    uint32_t host_ip;
+    uint32_t host_port;
+    uint32_t mask;
+    uint32_t gateway;
+    uint16_t crc;
+};
+
+struct IPConfigRsp
+{
+    uint32_t msg_id;
+    uint16_t error_no;
+    uint16_t crc;
+};
+
 #pragma pack(pop)
 
 class IExxx : public OsightLidar
@@ -177,11 +201,18 @@ public:
     virtual void startTransferData(void);
     virtual void stopTransferData(void);
 
+    bool IPCfg(osight_lidar::IPConfig::Request &req, osight_lidar::IPConfig::Response &res);
+
 private:
     void dataCallback(uint8_t *buff, int len);
     Udp *udp_;
     vector<float> ranges;
     vector<float> intensities;
+    ros::ServiceServer IPConfigService_;
+    std::string lidar_ip_;
+    int host_port_;
+    int lidar_port_;
+    uint16_t ip_cfg_err_;
 };
 
 #endif

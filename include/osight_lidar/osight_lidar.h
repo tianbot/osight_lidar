@@ -35,15 +35,12 @@
 #include "stdint.h"
 #include "sensor_msgs/LaserScan.h"
 #include <vector>
+#include "osight_lidar/IPConfig.h"
 
 #define DEG2RAD (M_PI / 180.0)
 
 #define DEFAULT_LIDAR_MODEL "iexxx"
 #define DEFAULT_FRAME_ID "laser"
-
-#define DEFAULT_LIDAR_IP "192.168.1.10"
-#define DEFAULT_LIDAR_PORT 6500
-#define DEFAULT_HOST_PORT 5500
 
 #define PACK_1_BYTE(pucBuff, ucData) \
     {                                \
@@ -104,9 +101,6 @@ protected:
     ros::NodeHandle nh_;
     void lidarDataCallback(vector<float> ranges, vector<float> intensities, struct LidarParam lidar_param);
     uint16_t crc16(uint8_t *buff, uint32_t len);
-    std::string lidar_ip_;
-    int host_port_;
-    int lidar_port_;
     struct LidarParam lidar_param_;
 
 private:

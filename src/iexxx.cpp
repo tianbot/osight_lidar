@@ -55,6 +55,10 @@ IExxx::IExxx(ros::NodeHandle *nh) : OsightLidar(nh)
     ROS_INFO("lidar default max range: %f", lidar_param_.range_max);
     ROS_INFO("lidar default scan time: %f", lidar_param_.scan_time);
     ROS_INFO("lidar default time increment: %f", lidar_param_.time_increment);
+    nh_.param<std::string>("lidar_ip", lidar_ip_, DEFAULT_LIDAR_IP);
+    nh_.param<int>("lidar_port", lidar_port_, DEFAULT_LIDAR_PORT);
+    nh_.param<int>("host_port", host_port_, DEFAULT_HOST_PORT);
+    IPConfigService_ = nh_.advertiseService<osight_lidar::IPConfig::Request, osight_lidar::IPConfig::Response>("ip_cfg", boost::bind(&IExxx::IPCfg, this, _1, _2));
 }
 
 IExxx::~IExxx()
@@ -94,6 +98,26 @@ void IExxx::stopTransferData(void)
     req.function_id = STOP_DATA_TRANSFER;
     req.crc = htons(crc16((uint8_t *)&req, sizeof(req) - 2));
     udp_->send((uint8_t *)&req, sizeof(req));
+}
+
+bool IExxx::IPCfg(osight_lidar::IPConfig::Request &request, osight_lidar::IPConfig::Response &res)
+{
+    struct IPConfigReq req;
+    req.msg_id = htonl(SET_STATIC_IP_REQ);
+    req.dev_ip = inet_addr(request.dev_ip.c_str());
+    req.dev_port = inet_addr(request.dev_port.c_str());
+    req.host_ip = inet_addr(request.dev_ip.c_str());
+    req.host_port = inet_addr(request.dev_ip.c_str());
+    req.mask = inet_addr(request.mask.c_str());
+    req.gateway = inet_addr(request.gateway.c_str());
+
+    ip_cfg_err_ = 0xFFFF;
+
+    req.crc = htons(crc16((uint8_t *)&req, sizeof(req) - 2));
+    udp_->send((uint8_t *)&req, sizeof(req));
+    ros::Duration(0.5).sleep();
+    res.error_no = ip_cfg_err_;
+    return true;
 }
 
 void IExxx::dataCallback(uint8_t *buff, int len)
@@ -224,6 +248,12 @@ void IExxx::dataCallback(uint8_t *buff, int len)
     case SET_NET_MODE_RSP:
         break;
     case SET_STATIC_IP_RSP:
+        {
+            struct IPConfigRsp *p = (struct IPConfigRsp *)buff;
+            p->msg_id = ntohl(p->msg_id);
+            p->error_no = ntohs(p->error_no);
+            ip_cfg_err_ = p->error_no;
+        }
         break;
     default:
         break;

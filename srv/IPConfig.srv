@@ -1,0 +1,6 @@
+string dev_ip
+string dev_port
+string mask
+string gateway
+---
+uint16 error_no

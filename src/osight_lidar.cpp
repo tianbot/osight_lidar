@@ -34,9 +34,6 @@ OsightLidar::OsightLidar(ros::NodeHandle *nh) : nh_(*nh)
 {
     seq_ = 0;
     nh_.param<std::string>("frame_id", frame_id_, DEFAULT_FRAME_ID);
-    nh_.param<std::string>("lidar_ip", lidar_ip_, DEFAULT_LIDAR_IP);
-    nh_.param<int>("lidar_port", lidar_port_, DEFAULT_LIDAR_PORT);
-    nh_.param<int>("host_port", host_port_, DEFAULT_HOST_PORT);
     scan_pub_ = nh_.advertise<sensor_msgs::LaserScan>("scan", 1);
 }
 
