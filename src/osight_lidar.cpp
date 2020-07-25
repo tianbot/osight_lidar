@@ -34,7 +34,11 @@ OsightLidar::OsightLidar(ros::NodeHandle *nh) : nh_(*nh)
 {
     seq_ = 0;
     nh_.param<std::string>("frame_id", frame_id_, DEFAULT_FRAME_ID);
+    nh_.param<float>("angle_min", angle_min_, DEFAULT_ANGLE_MIN);
+    nh_.param<float>("angle_max", angle_max_, DEFAULT_ANGLE_MAX);
     scan_pub_ = nh_.advertise<sensor_msgs::LaserScan>("scan", 1);
+    ROS_INFO("scan msg min angle %f", angle_min_);
+    ROS_INFO("scan msg max angle %f", angle_max_);
 }
 
 void OsightLidar::lidarDataCallback(vector<float> ranges, vector<float> intensities, struct LidarParam lidar_param)
@@ -43,15 +47,17 @@ void OsightLidar::lidarDataCallback(vector<float> ranges, vector<float> intensit
     scan_msg.header.seq = seq_++;
     scan_msg.header.stamp = ros::Time::now();
     scan_msg.header.frame_id = frame_id_;
-    scan_msg.angle_min = lidar_param.angle_min;
-    scan_msg.angle_max = lidar_param.angle_max;
+    scan_msg.angle_min = angle_min_;
+    scan_msg.angle_max = angle_max_;
     scan_msg.angle_increment = lidar_param.angle_increment;
     scan_msg.time_increment = lidar_param.time_increment;
     scan_msg.scan_time = lidar_param.scan_time;
     scan_msg.range_min = lidar_param.range_min;
     scan_msg.range_max = lidar_param.range_max;
-    scan_msg.ranges = ranges;
-    scan_msg.intensities = intensities;
+    int start = (angle_min_ - lidar_param.angle_min) / lidar_param.angle_increment;
+    int end = (angle_max_ - lidar_param.angle_min) / lidar_param.angle_increment + 1;
+    scan_msg.ranges.assign(ranges.begin() + start, ranges.begin() + end);
+    scan_msg.intensities.assign(intensities.begin() + start, intensities.begin() + end);
     scan_pub_.publish(scan_msg);
 }
 

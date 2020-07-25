@@ -75,6 +75,8 @@
 
 using namespace std;
 
+#define DEFAULT_ANGLE_MIN (-135.0 * DEG2RAD)
+#define DEFAULT_ANGLE_MAX (135.0 * DEG2RAD)
 struct LidarParam
 {
     float angle_min;
@@ -95,6 +97,8 @@ public:
     virtual void updateParam(void) = 0;
     virtual void startTransferData(void) = 0;
     virtual void stopTransferData(void) = 0;
+    float angle_max_;
+    float angle_min_;
 
 protected:
     ros::NodeHandle nh_;
