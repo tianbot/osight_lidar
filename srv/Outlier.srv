@@ -1,0 +1,4 @@
+uint8 outlier
+uint8 outlier_level
+---
+uint16 error_no

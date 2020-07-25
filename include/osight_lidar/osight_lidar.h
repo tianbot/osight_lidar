@@ -35,7 +35,6 @@
 #include "stdint.h"
 #include "sensor_msgs/LaserScan.h"
 #include <vector>
-#include "osight_lidar/IPConfig.h"
 
 #define DEG2RAD (M_PI / 180.0)
 

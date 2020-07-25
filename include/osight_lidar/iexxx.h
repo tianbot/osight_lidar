@@ -33,12 +33,18 @@
 
 #include "osight_lidar.h"
 #include "udp.h"
+#include "osight_lidar/Echo.h"
+#include "osight_lidar/Intensity.h"
+#include "osight_lidar/Outlier.h"
+#include "osight_lidar/Speed.h"
+#include "osight_lidar/Resolution.h"
+#include "osight_lidar/IPConfig.h"
 
 #define DEFAULT_LIDAR_IP "192.168.1.10"
 #define DEFAULT_LIDAR_PORT 6500
 #define DEFAULT_HOST_PORT 5500
 
-#define DEFAULT_MAX_RANGES ((float)210000/10000)
+#define DEFAULT_MAX_RANGES ((float)210000 / 10000)
 #define DEFAULT_MIN_RANGES ((float)0.01)
 #define DEFAULT_ANGLE_MIN ((float)(-45.0 * DEG2RAD - M_PI / 2))
 #define DEFAULT_ANGLE_MAX ((float)(225.0 * DEG2RAD - M_PI / 2))
@@ -189,6 +195,65 @@ struct IPConfigRsp
     uint16_t crc;
 };
 
+struct ParamConfigReq
+{
+    uint32_t msg_id;
+    uint8_t speed;
+    uint8_t intensity;
+    uint32_t resolution;
+    uint16_t crc;
+};
+
+struct ParamConfigRsp
+{
+    uint32_t msg_id;
+    uint16_t error_no;
+    uint16_t crc;
+};
+
+struct FilterConfigReq
+{
+    uint32_t msg_id;
+    uint8_t outlier;
+    uint8_t echo;
+    uint8_t outlier_level;
+    uint16_t crc;
+};
+
+struct FilterConfigRsp
+{
+    uint32_t msg_id;
+    uint16_t error_no;
+    uint16_t crc;
+};
+
+struct LidarReport
+{
+    uint32_t msg_id;
+    uint8_t speed;
+    uint32_t mcu_vol;
+    int32_t mcu_temp;
+    int32_t dev_temp;
+    uint32_t dev_humidity;
+    uint16_t crc;
+};
+
+struct ErrStr
+{
+    uint16_t err_no;
+    char const *err_str;
+};
+
+struct PrivateParam
+{
+    uint8_t outlier;
+    uint8_t echo;
+    uint8_t outlier_level;
+    uint8_t speed;
+    uint8_t intensity;
+    uint32_t resolution;
+};
+
 #pragma pack(pop)
 
 class IExxx : public OsightLidar
@@ -202,17 +267,29 @@ public:
     virtual void stopTransferData(void);
 
     bool IPCfg(osight_lidar::IPConfig::Request &req, osight_lidar::IPConfig::Response &res);
+    bool speedCfg(osight_lidar::Speed::Request &req, osight_lidar::Speed::Response &res);
+    bool echoCfg(osight_lidar::Echo::Request &req, osight_lidar::Echo::Response &res);
+    bool outlierCfg(osight_lidar::Outlier::Request &req, osight_lidar::Outlier::Response &res);
+    bool resolutionCfg(osight_lidar::Resolution::Request &req, osight_lidar::Resolution::Response &res);
+    bool intensityCfg(osight_lidar::Intensity::Request &req, osight_lidar::Intensity::Response &res);
+    const char *err_str(uint16_t err_no);
 
 private:
     void dataCallback(uint8_t *buff, int len);
     Udp *udp_;
     vector<float> ranges;
     vector<float> intensities;
-    ros::ServiceServer IPConfigService_;
+    ros::ServiceServer IP_config_service_;
+    ros::ServiceServer speed_config_service_;
+    ros::ServiceServer echo_config_service_;
+    ros::ServiceServer outlier_config_service_;
+    ros::ServiceServer resolution_config_service_;
+    ros::ServiceServer intensity_config_service_;
     std::string lidar_ip_;
     int host_port_;
     int lidar_port_;
-    uint16_t ip_cfg_err_;
+    uint16_t cfg_err_;
+    struct PrivateParam private_param_;
 };
 
 #endif

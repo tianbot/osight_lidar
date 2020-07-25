@@ -59,6 +59,11 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
   FILES
   IPConfig.srv
+  Echo.srv
+  Intensity.srv
+  Outlier.srv
+  Resolution.srv
+  Speed.srv
 #   Service1.srv
 #   Service2.srv
 )
