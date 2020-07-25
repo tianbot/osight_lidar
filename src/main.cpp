@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     {
         if (lidar->init())
         {
-            ROS_INFO("lidar [%s] init successfully", lidar_model.c_str());
+            ROS_INFO("lidar [%s] communication link init successfully", lidar_model.c_str());
             break;
         }
         else
