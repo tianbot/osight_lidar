@@ -5,7 +5,8 @@ Osight Lidar IExxx
 Purchase link(淘宝购买链接)：https://item.taobao.com/item.htm?id=612044849834
 
 ## Specification
-
+|  Items  | Details|
+|    ---    |     ---     |
 | Model  | IE103-S |
 | Environment  | Outdoors |
 | Working temperature  | -20℃～+60℃ |
@@ -24,11 +25,11 @@ Purchase link(淘宝购买链接)：https://item.taobao.com/item.htm?id=61204484
 | Size  | 60mm×60mm×93mm |
 | Power Consumption  | ≤ 4W |
 
-Standard:
-IEC 60068-2-27:2008
-IEC 60068-2-6:2007
-EMC EN 61000-6-2:2005
-EN 61000-6-4:2007+A1
+Standard:  
+IEC 60068-2-27:2008  
+IEC 60068-2-6:2007  
+EMC EN 61000-6-2:2005  
+EN 61000-6-4:2007+A1  
 
 
 ## Installation Instructions
