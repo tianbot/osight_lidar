@@ -39,7 +39,8 @@ int main(int argc, char *argv[])
 
     ros::init(argc, argv, "osight_lidar_node");
 
-    ros::NodeHandle nh("osight_lidar");
+    //ros::NodeHandle nh("osight_lidar");
+    ros::NodeHandle nh("~");
 
     nh.param<std::string>("lidar_model", lidar_model, DEFAULT_LIDAR_MODEL);
 
