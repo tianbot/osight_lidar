@@ -6,7 +6,7 @@ Purchase link(淘宝购买链接)：https://item.taobao.com/item.htm?id=61204484
 
 ## Specification
 |  Items  | Details|
-|    ---    |     ---     |
+|    :---:    |     :---:     |
 | Model  | IE103-S |
 | Environment  | Outdoors |
 | Working temperature  | -20℃～+60℃ |
@@ -24,12 +24,7 @@ Purchase link(淘宝购买链接)：https://item.taobao.com/item.htm?id=61204484
 | Weight  | 320 g |
 | Size  | 60mm×60mm×93mm |
 | Power Consumption  | ≤ 4W |
-
-Standard:  
-IEC 60068-2-27:2008  
-IEC 60068-2-6:2007  
-EMC EN 61000-6-2:2005  
-EN 61000-6-4:2007+A1  
+| Standard  | IEC 60068-2-27:2008 <br> IEC 60068-2-6:2007 <br> EMC EN 61000-6-2:2005  <br> EN 61000-6-4:2007+A1  |
 
 
 ## Installation Instructions
@@ -53,6 +48,42 @@ Launch the lidar.
 ```
 roslaunch osight_lidar osight_lidar.launch
 ```
+
+## Topics
+### Published  
+ - ~/scan (sensor_msgs/LaserScan)
+
+## Services
+- ~/ip_cfg  
+Configure the IP address of lidar.  
+
+- ~/speed_cfg  
+N/A currently.   
+
+- ~/echo_cfg  
+Enable or disable the multi echo function.  
+
+- ~/outlier_cfg  
+Remove the outlier.   
+
+- ~/resolution_cfg  
+N/A currently.  
+
+- ~/intensity_cfg   
+Enable or disable intensity. Congifure the intensities data type.  
+
+## Params
+- ~/lidar_ip  
+Specify the IP address of lidar.   
+
+- ~/frame_id  
+Frame id of the laser scan msgs.  
+
+- ~/angle_min  
+Minimum angle.  
+
+- ~/angle_max  
+Maximum angle.  
 
 ## License
 The package is under BSD 3-Clause License
