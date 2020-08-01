@@ -1,3 +1,4 @@
 string dev_ip
+int32 host_port
 ---
 uint16 error_no

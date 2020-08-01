@@ -123,13 +123,14 @@ bool IExxx::IPCfg(osight_lidar::IPConfig::Request &request, osight_lidar::IPConf
     req.msg_id = htonl(SET_STATIC_IP_REQ);
     req.dev_ip = inet_addr(request.dev_ip.c_str());
     //req.dev_port = inet_addr(request.dev_port.c_str());
+
     req.dev_port = htonl(DEFAULT_LIDAR_PORT);
     host_ip = request.dev_ip;
     n = host_ip.find_last_of('.') + 1;
     host_ip.replace(n, host_ip.length() - n, "254");
 
     req.host_ip = inet_addr(host_ip.c_str());
-    req.host_port = htonl(DEFAULT_HOST_PORT);
+    req.host_port = htonl(request.host_port);
     req.mask = inet_addr("255.255.255.0");
 
     gateway = request.dev_ip;
