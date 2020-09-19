@@ -504,7 +504,6 @@ void IE303l::dataCallback(uint8_t *buff, int len)
         break;
 
     case IE303L_MEAS_DATA_PACKAGE_RSP:
-        ROS_INFO("lidar measure data recv");
         p_meas = (struct IE303lMeasureDataRsp *)buff;
         p_data = p_meas->data;
         p_meas->msg_id = ntohl(p_meas->msg_id);
