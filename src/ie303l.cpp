@@ -28,9 +28,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "iexxx.h"
+#include "ie303l.h"
 
-static const struct IExxxErrStr err[] = {
+static const struct IE303lErrStr err[] = {
     {0x0000, "succeed"},
     {0x0001, "angle resolution configuration not supported"},
     {0x0002, "speed configuration not supported"},
@@ -43,17 +43,17 @@ static const struct IExxxErrStr err[] = {
     {0x010A, "IP param error"},
     {0xFFFF, "response timeout"}};
 
-IExxx::IExxx(ros::NodeHandle *nh) : OsightLidar(nh)
+IE303l::IE303l(ros::NodeHandle *nh) : OsightLidar(nh)
 {
     ranges.clear();
     intensities.clear();
-    nh_.param<float>("range_max", lidar_param_.range_max, IEXXX_DEFAULT_MAX_RANGES);
-    nh_.param<float>("range_min", lidar_param_.range_min, IEXXX_DEFAULT_MIN_RANGES);
-    nh_.param<float>("scan_time", lidar_param_.scan_time, IEXXX_DEFAULT_SCAN_TIME);
-    nh_.param<float>("lidar_angle_min", lidar_param_.angle_min, IEXXX_DEFAULT_LIDAR_ANGLE_MIN);
-    nh_.param<float>("lidar_angle_max", lidar_param_.angle_max, IEXXX_DEFAULT_LIDAR_ANGLE_MAX);
-    nh_.param<float>("time_increment", lidar_param_.time_increment, IEXXX_DEFAULT_TIME_INCREMENT);
-    nh_.param<float>("angle_increment", lidar_param_.angle_increment, IEXXX_DEFAULT_ANGLE_INCREMENT);
+    nh_.param<float>("range_max", lidar_param_.range_max, IE303L_DEFAULT_MAX_RANGES);
+    nh_.param<float>("range_min", lidar_param_.range_min, IE303L_DEFAULT_MIN_RANGES);
+    nh_.param<float>("scan_time", lidar_param_.scan_time, IE303L_DEFAULT_SCAN_TIME);
+    nh_.param<float>("lidar_angle_min", lidar_param_.angle_min, IE303L_DEFAULT_LIDAR_ANGLE_MIN);
+    nh_.param<float>("lidar_angle_max", lidar_param_.angle_max, IE303L_DEFAULT_LIDAR_ANGLE_MAX);
+    nh_.param<float>("time_increment", lidar_param_.time_increment, IE303L_DEFAULT_TIME_INCREMENT);
+    nh_.param<float>("angle_increment", lidar_param_.angle_increment, IE303L_DEFAULT_ANGLE_INCREMENT);
     ROS_INFO("lidar default min angle: %f", lidar_param_.angle_min);
     ROS_INFO("lidar default max angle: %f", lidar_param_.angle_max);
     ROS_INFO("lidar default angle increment: %f", lidar_param_.angle_increment);
@@ -61,101 +61,185 @@ IExxx::IExxx(ros::NodeHandle *nh) : OsightLidar(nh)
     ROS_INFO("lidar default max range: %f", lidar_param_.range_max);
     ROS_INFO("lidar default scan time: %f", lidar_param_.scan_time);
     ROS_INFO("lidar default time increment: %f", lidar_param_.time_increment);
-    nh_.param<std::string>("lidar_ip", lidar_ip_, IEXXX_DEFAULT_LIDAR_IP);
-    nh_.param<int>("lidar_port", lidar_port_, IEXXX_DEFAULT_LIDAR_PORT);
-    nh_.param<int>("host_port", host_port_, IEXXX_DEFAULT_HOST_PORT);
-    IP_config_service_ = nh_.advertiseService<osight_lidar::IPConfig::Request, osight_lidar::IPConfig::Response>("ip_cfg", boost::bind(&IExxx::IPCfg, this, _1, _2));
-    speed_config_service_ = nh_.advertiseService<osight_lidar::Speed::Request, osight_lidar::Speed::Response>("speed_cfg", boost::bind(&IExxx::speedCfg, this, _1, _2));
-    echo_config_service_ = nh_.advertiseService<osight_lidar::Echo::Request, osight_lidar::Echo::Response>("echo_cfg", boost::bind(&IExxx::echoCfg, this, _1, _2));
-    outlier_config_service_ = nh_.advertiseService<osight_lidar::Outlier::Request, osight_lidar::Outlier::Response>("outlier_cfg", boost::bind(&IExxx::outlierCfg, this, _1, _2));
-    resolution_config_service_ = nh_.advertiseService<osight_lidar::Resolution::Request, osight_lidar::Resolution::Response>("resolution_cfg", boost::bind(&IExxx::resolutionCfg, this, _1, _2));
-    intensity_config_service_ = nh_.advertiseService<osight_lidar::Intensity::Request, osight_lidar::Intensity::Response>("intensity_cfg", boost::bind(&IExxx::intensityCfg, this, _1, _2));
+    nh_.param<std::string>("lidar_serial", lidar_serial_, IE303L_DEFAULT_LIDAR_SERIAL);
+
+    speed_config_service_ = nh_.advertiseService<osight_lidar::Speed::Request, osight_lidar::Speed::Response>("speed_cfg", boost::bind(&IE303l::speedCfg, this, _1, _2));
+    echo_config_service_ = nh_.advertiseService<osight_lidar::Echo::Request, osight_lidar::Echo::Response>("echo_cfg", boost::bind(&IE303l::echoCfg, this, _1, _2));
+    outlier_config_service_ = nh_.advertiseService<osight_lidar::Outlier::Request, osight_lidar::Outlier::Response>("outlier_cfg", boost::bind(&IE303l::outlierCfg, this, _1, _2));
+    resolution_config_service_ = nh_.advertiseService<osight_lidar::Resolution::Request, osight_lidar::Resolution::Response>("resolution_cfg", boost::bind(&IE303l::resolutionCfg, this, _1, _2));
+    intensity_config_service_ = nh_.advertiseService<osight_lidar::Intensity::Request, osight_lidar::Intensity::Response>("intensity_cfg", boost::bind(&IE303l::intensityCfg, this, _1, _2));
 }
 
-IExxx::~IExxx()
+IE303l::~IE303l()
 {
-    udp_->close();
-    delete udp_;
+    serial_->close();
+    delete serial_;
 }
 
-bool IExxx::init(void)
+void IE303l::serialDataProc(uint8_t *buff, int len)
 {
-    udp_ = new Udp();
-    ROS_INFO("lidar IP: %s Port: %d", lidar_ip_.c_str(), lidar_port_);
-    return udp_->init(lidar_ip_.c_str(), lidar_port_, host_port_, boost::bind(&IExxx::dataCallback, this, _1, _2));
+    static uint8_t state = 0;
+    uint8_t *p = buff;
+    static vector<uint8_t> recv_msg;
+    static uint32_t msg_len;
+    while (len != 0)
+    {
+        switch (state)
+        {
+        case 0:
+            if (*p == PROTOCOL_HEAD_0)
+            {
+                recv_msg.clear();
+                recv_msg.push_back(PROTOCOL_HEAD_0);
+                state = 1;
+            }
+            p++;
+            len--;
+            break;
+
+        case 1:
+            if (*p == PROTOCOL_HEAD_1)
+            {
+                recv_msg.push_back(PROTOCOL_HEAD_1);
+                p++;
+                len--;
+                state = 2;
+            }
+            else
+            {
+                state = 0;
+            }
+            break;
+
+        case 2: // len
+            recv_msg.push_back(*p);
+            msg_len = (*p) * 256;
+            p++;
+            len--;
+            state = 3;
+            break;
+
+        case 3: // len
+            recv_msg.push_back(*p);
+            msg_len += *p;
+            if (msg_len > 1024 * 10)
+            {
+                state = 0;
+                break;
+            }
+            msg_len -= 4; //minus head and len field
+            p++;
+            len--;
+            state = 4;
+            break;
+
+        case 4: // msg
+            recv_msg.push_back(*p);
+            p++;
+            len--;
+            msg_len--;
+            if (msg_len == 0)
+            {
+                if ((recv_msg[recv_msg.size() - 2] == PROTOCOL_TAIL_0) && (recv_msg[recv_msg.size() - 1] == PROTOCOL_TAIL_1))
+                {
+                    dataCallback(&recv_msg[4], recv_msg.size() - 6);
+                }
+                state = 0;
+            }
+            break;
+
+        default:
+            state = 0;
+            break;
+        }
+    }
 }
 
-void IExxx::updateParam(void)
+bool IE303l::init(void)
 {
-    struct IExxxParamSyncReq req;
-    req.msg_id = htonl(IEXXX_PARA_SYNC_REQ);
+    serial_ = new Serial();
+    if (serial_->open(lidar_serial_.c_str(), 1152000, 0, 8, 1, 'N',
+                      boost::bind(&IE303l::serialDataProc, this, _1, _2)) != true)
+    {
+        ROS_INFO("lidar serial port [%s] open failed", lidar_serial_.c_str());
+        return false;
+    }
+    else
+    {
+        ROS_INFO("lidar serial port [%s] open successed", lidar_serial_.c_str());
+        return true;
+    }
+}
+
+void IE303l::updateParam(void)
+{
+    struct IE303lParamSyncReq req;
+    req.msg_id = htonl(IE303L_PARA_SYNC_REQ);
     req.crc = crc16((uint8_t *)&req, sizeof(req) - 2);
-    udp_->send((uint8_t *)&req, sizeof(req));
+
+    uint8_t buff[1024];
+    uint32_t offset = 0;
+    buff[offset++] = PROTOCOL_HEAD_0;
+    buff[offset++] = PROTOCOL_HEAD_1;
+    buff[offset++] = ((sizeof(IE303lParamSyncReq) + 6) >> 8) & 0xFF; //add head / len /tail
+    buff[offset++] = (sizeof(IE303lParamSyncReq) + 6) & 0xFF;
+    memcpy(buff + offset, &req, sizeof(req));
+    offset += sizeof(req);
+    buff[offset++] = PROTOCOL_TAIL_0;
+    buff[offset++] = PROTOCOL_TAIL_1;
+
+    serial_->send(buff, offset);
 }
 
-void IExxx::startTransferData(void)
+void IE303l::startTransferData(void)
 {
-    struct IExxxStartMeasureTransmissionReq req;
-    req.msg_id = htonl(IEXXX_START_MEASURE_TRANSMISSION_REQ);
-    req.function_id = IEXXX_START_DATA_TRANSFER;
-    req.crc = crc16((uint8_t *)&req, sizeof(req) - 2);
-    udp_->send((uint8_t *)&req, sizeof(req));
-}
-
-void IExxx::stopTransferData(void)
-{
-    struct IExxxStartMeasureTransmissionReq req;
-    req.msg_id = htonl(IEXXX_START_MEASURE_TRANSMISSION_REQ);
-    req.function_id = IEXXX_STOP_DATA_TRANSFER;
-    req.crc = crc16((uint8_t *)&req, sizeof(req) - 2);
-    udp_->send((uint8_t *)&req, sizeof(req));
-}
-
-//both host and dev port modification not supported
-bool IExxx::IPCfg(osight_lidar::IPConfig::Request &request, osight_lidar::IPConfig::Response &res)
-{
-    struct IExxxIPConfigReq req;
-    std::string host_ip, gateway;
-    int n;
-
-    ROS_INFO("IP config: dev ip -> %s", request.dev_ip.c_str());
-
-    req.msg_id = htonl(IEXXX_SET_STATIC_IP_REQ);
-    req.dev_ip = inet_addr(request.dev_ip.c_str());
-    //req.dev_port = inet_addr(request.dev_port.c_str());
-    req.dev_port = htonl(IEXXX_DEFAULT_LIDAR_PORT);
-    host_ip = request.dev_ip;
-    n = host_ip.find_last_of('.') + 1;
-    host_ip.replace(n, host_ip.length() - n, "254");
-
-    req.host_ip = inet_addr(host_ip.c_str());
-    req.host_port = htonl(IEXXX_DEFAULT_HOST_PORT);
-    req.mask = inet_addr("255.255.255.0");
-
-    gateway = request.dev_ip;
-    n = gateway.find_last_of('.') + 1;
-    gateway.replace(n, gateway.length() - n, "1");
-    req.gateway = inet_addr(gateway.c_str());
-
-    cfg_err_ = 0xFFFF;
-
+    struct IE303lStartMeasureTransmissionReq req;
+    req.msg_id = htonl(IE303L_START_MEASURE_TRANSMISSION_REQ);
+    req.function_id = IE303L_START_DATA_TRANSFER;
     req.crc = crc16((uint8_t *)&req, sizeof(req) - 2);
 
-    udp_->send((uint8_t *)&req, sizeof(req));
-    ros::Duration(0.5).sleep();
-    res.error_no = cfg_err_;
-    ROS_INFO("IP config: %s", err_str(res.error_no));
-    ROS_INFO("the new configuration takes effect after \033[33;1mrestarting the lidar and the node\033[0m, please modify the host \033[33;1mIP segment\033[0m according to the IP configuration");
-    return true;
+    uint8_t buff[1024];
+    uint32_t offset = 0;
+    buff[offset++] = PROTOCOL_HEAD_0;
+    buff[offset++] = PROTOCOL_HEAD_1;
+    buff[offset++] = ((sizeof(IE303lStartMeasureTransmissionReq) + 6) >> 8) & 0xFF;
+    buff[offset++] = (sizeof(IE303lStartMeasureTransmissionReq) + 6) & 0xFF;
+    memcpy(buff + offset, &req, sizeof(req));
+    offset += sizeof(req);
+    buff[offset++] = PROTOCOL_TAIL_0;
+    buff[offset++] = PROTOCOL_TAIL_1;
+
+    serial_->send(buff, offset);
 }
 
-bool IExxx::speedCfg(osight_lidar::Speed::Request &request, osight_lidar::Speed::Response &res)
+void IE303l::stopTransferData(void)
 {
-    struct IExxxParamConfigReq req;
+    struct IE303lStartMeasureTransmissionReq req;
+    req.msg_id = htonl(IE303L_START_MEASURE_TRANSMISSION_REQ);
+    req.function_id = IE303L_STOP_DATA_TRANSFER;
+    req.crc = crc16((uint8_t *)&req, sizeof(req) - 2);
+
+    uint8_t buff[1024];
+    uint32_t offset = 0;
+    buff[offset++] = PROTOCOL_HEAD_0;
+    buff[offset++] = PROTOCOL_HEAD_1;
+    buff[offset++] = ((sizeof(IE303lStartMeasureTransmissionReq) + 6) >> 8) & 0xFF;
+    buff[offset++] = (sizeof(IE303lStartMeasureTransmissionReq) + 6) & 0xFF;
+    memcpy(buff + offset, &req, sizeof(req));
+    offset += sizeof(req);
+    buff[offset++] = PROTOCOL_TAIL_0;
+    buff[offset++] = PROTOCOL_TAIL_1;
+
+    serial_->send(buff, offset);
+}
+
+bool IE303l::speedCfg(osight_lidar::Speed::Request &request, osight_lidar::Speed::Response &res)
+{
+    struct IE303lParamConfigReq req;
 
     ROS_INFO("speed config(5-30): %d", request.speed);
 
-    req.msg_id = htonl(IEXXX_PARA_DEVICE_CONFIGURATION_REQ);
+    req.msg_id = htonl(IE303L_PARA_DEVICE_CONFIGURATION_REQ);
     req.speed = request.speed;
     req.intensity = private_param_.intensity;
     req.resolution = htonl(private_param_.resolution);
@@ -164,7 +248,19 @@ bool IExxx::speedCfg(osight_lidar::Speed::Request &request, osight_lidar::Speed:
 
     req.crc = crc16((uint8_t *)&req, sizeof(req) - 2);
 
-    udp_->send((uint8_t *)&req, sizeof(req));
+    uint8_t buff[1024];
+    uint32_t offset = 0;
+    buff[offset++] = PROTOCOL_HEAD_0;
+    buff[offset++] = PROTOCOL_HEAD_1;
+    buff[offset++] = ((sizeof(IE303lParamConfigReq) >> 8) + 6) & 0xFF;
+    buff[offset++] = (sizeof(IE303lParamConfigReq) + 6) & 0xFF;
+    memcpy(buff + offset, &req, sizeof(req));
+    offset += sizeof(req);
+    buff[offset++] = PROTOCOL_TAIL_0;
+    buff[offset++] = PROTOCOL_TAIL_1;
+
+    serial_->send(buff, offset);
+
     ros::Duration(0.5).sleep();
     res.error_no = cfg_err_;
     ROS_INFO("speed config: %s", err_str(res.error_no));
@@ -175,13 +271,13 @@ bool IExxx::speedCfg(osight_lidar::Speed::Request &request, osight_lidar::Speed:
     return true;
 }
 
-bool IExxx::resolutionCfg(osight_lidar::Resolution::Request &request, osight_lidar::Resolution::Response &res)
+bool IE303l::resolutionCfg(osight_lidar::Resolution::Request &request, osight_lidar::Resolution::Response &res)
 {
-    struct IExxxParamConfigReq req;
+    struct IE303lParamConfigReq req;
 
     ROS_INFO("resolution config(1250000, 2500000, 3125000, 6250000): %d", request.resolution);
 
-    req.msg_id = htonl(IEXXX_PARA_DEVICE_CONFIGURATION_REQ);
+    req.msg_id = htonl(IE303L_PARA_DEVICE_CONFIGURATION_REQ);
     req.speed = private_param_.speed;
     req.intensity = private_param_.intensity;
     req.resolution = htonl(request.resolution);
@@ -190,7 +286,19 @@ bool IExxx::resolutionCfg(osight_lidar::Resolution::Request &request, osight_lid
 
     req.crc = crc16((uint8_t *)&req, sizeof(req) - 2);
 
-    udp_->send((uint8_t *)&req, sizeof(req));
+    uint8_t buff[1024];
+    uint32_t offset = 0;
+    buff[offset++] = PROTOCOL_HEAD_0;
+    buff[offset++] = PROTOCOL_HEAD_1;
+    buff[offset++] = ((sizeof(IE303lParamConfigReq) >> 8) + 6) & 0xFF;
+    buff[offset++] = (sizeof(IE303lParamConfigReq) + 6) & 0xFF;
+    memcpy(buff + offset, &req, sizeof(req));
+    offset += sizeof(req);
+    buff[offset++] = PROTOCOL_TAIL_0;
+    buff[offset++] = PROTOCOL_TAIL_1;
+
+    serial_->send(buff, offset);
+
     ros::Duration(0.5).sleep();
     res.error_no = cfg_err_;
     ROS_INFO("resolution config: %s", err_str(res.error_no));
@@ -201,13 +309,13 @@ bool IExxx::resolutionCfg(osight_lidar::Resolution::Request &request, osight_lid
     return true;
 }
 
-bool IExxx::intensityCfg(osight_lidar::Intensity::Request &request, osight_lidar::Intensity::Response &res)
+bool IE303l::intensityCfg(osight_lidar::Intensity::Request &request, osight_lidar::Intensity::Response &res)
 {
-    struct IExxxParamConfigReq req;
+    struct IE303lParamConfigReq req;
 
     ROS_INFO("intensity config(0,1,2): %d", request.intensity);
 
-    req.msg_id = htonl(IEXXX_PARA_DEVICE_CONFIGURATION_REQ);
+    req.msg_id = htonl(IE303L_PARA_DEVICE_CONFIGURATION_REQ);
     req.speed = private_param_.speed;
     req.intensity = request.intensity;
     req.resolution = htonl(private_param_.resolution);
@@ -216,7 +324,19 @@ bool IExxx::intensityCfg(osight_lidar::Intensity::Request &request, osight_lidar
 
     req.crc = crc16((uint8_t *)&req, sizeof(req) - 2);
 
-    udp_->send((uint8_t *)&req, sizeof(req));
+    uint8_t buff[1024];
+    uint32_t offset = 0;
+    buff[offset++] = PROTOCOL_HEAD_0;
+    buff[offset++] = PROTOCOL_HEAD_1;
+    buff[offset++] = ((sizeof(IE303lParamConfigReq) >> 8) + 6) & 0xFF;
+    buff[offset++] = (sizeof(IE303lParamConfigReq) + 6) & 0xFF;
+    memcpy(buff + offset, &req, sizeof(req));
+    offset += sizeof(req);
+    buff[offset++] = PROTOCOL_TAIL_0;
+    buff[offset++] = PROTOCOL_TAIL_1;
+
+    serial_->send(buff, offset);
+
     ros::Duration(0.5).sleep();
     res.error_no = cfg_err_;
     ROS_INFO("intensity config: %s", err_str(res.error_no));
@@ -227,13 +347,13 @@ bool IExxx::intensityCfg(osight_lidar::Intensity::Request &request, osight_lidar
     return true;
 }
 
-bool IExxx::echoCfg(osight_lidar::Echo::Request &request, osight_lidar::Echo::Response &res)
+bool IE303l::echoCfg(osight_lidar::Echo::Request &request, osight_lidar::Echo::Response &res)
 {
-    struct IExxxFilterConfigReq req;
+    struct IE303lFilterConfigReq req;
 
     ROS_INFO("echo filter config(0,1): %d", request.echo);
 
-    req.msg_id = htonl(IEXXX_ACTIVE_FILTER_REQ);
+    req.msg_id = htonl(IE303L_ACTIVE_FILTER_REQ);
     req.outlier = private_param_.outlier;
     req.echo = request.echo;
     req.outlier_level = private_param_.outlier_level;
@@ -242,7 +362,19 @@ bool IExxx::echoCfg(osight_lidar::Echo::Request &request, osight_lidar::Echo::Re
 
     req.crc = crc16((uint8_t *)&req, sizeof(req) - 2);
 
-    udp_->send((uint8_t *)&req, sizeof(req));
+    uint8_t buff[1024];
+    uint32_t offset = 0;
+    buff[offset++] = PROTOCOL_HEAD_0;
+    buff[offset++] = PROTOCOL_HEAD_1;
+    buff[offset++] = ((sizeof(IE303lFilterConfigReq) >> 8) + 6) & 0xFF;
+    buff[offset++] = (sizeof(IE303lFilterConfigReq) + 6) & 0xFF;
+    memcpy(buff + offset, &req, sizeof(req));
+    offset += sizeof(req);
+    buff[offset++] = PROTOCOL_TAIL_0;
+    buff[offset++] = PROTOCOL_TAIL_1;
+
+    serial_->send(buff, offset);
+
     ros::Duration(0.5).sleep();
     res.error_no = cfg_err_;
     ROS_INFO("echo filter config: %s", err_str(res.error_no));
@@ -253,13 +385,13 @@ bool IExxx::echoCfg(osight_lidar::Echo::Request &request, osight_lidar::Echo::Re
     return true;
 }
 
-bool IExxx::outlierCfg(osight_lidar::Outlier::Request &request, osight_lidar::Outlier::Response &res)
+bool IE303l::outlierCfg(osight_lidar::Outlier::Request &request, osight_lidar::Outlier::Response &res)
 {
-    struct IExxxFilterConfigReq req;
+    struct IE303lFilterConfigReq req;
 
     ROS_INFO("outlier filter config(0,1): %d", request.outlier);
     ROS_INFO("outlier level config(1-5): %d", request.outlier_level);
-    req.msg_id = htonl(IEXXX_ACTIVE_FILTER_REQ);
+    req.msg_id = htonl(IE303L_ACTIVE_FILTER_REQ);
     req.outlier = request.outlier;
     req.echo = private_param_.echo;
     req.outlier_level = request.outlier_level;
@@ -268,7 +400,19 @@ bool IExxx::outlierCfg(osight_lidar::Outlier::Request &request, osight_lidar::Ou
 
     req.crc = crc16((uint8_t *)&req, sizeof(req) - 2);
 
-    udp_->send((uint8_t *)&req, sizeof(req));
+    uint8_t buff[1024];
+    uint32_t offset = 0;
+    buff[offset++] = PROTOCOL_HEAD_0;
+    buff[offset++] = PROTOCOL_HEAD_1;
+    buff[offset++] = ((sizeof(IE303lFilterConfigReq) >> 8) + 6) & 0xFF;
+    buff[offset++] = (sizeof(IE303lFilterConfigReq) + 6) & 0xFF;
+    memcpy(buff + offset, &req, sizeof(req));
+    offset += sizeof(req);
+    buff[offset++] = PROTOCOL_TAIL_0;
+    buff[offset++] = PROTOCOL_TAIL_1;
+
+    serial_->send(buff, offset);
+
     ros::Duration(0.5).sleep();
     res.error_no = cfg_err_;
     ROS_INFO("outlier filter config: %s", err_str(res.error_no));
@@ -280,20 +424,20 @@ bool IExxx::outlierCfg(osight_lidar::Outlier::Request &request, osight_lidar::Ou
     return true;
 }
 
-void IExxx::dataCallback(uint8_t *buff, int len)
+void IE303l::dataCallback(uint8_t *buff, int len)
 {
     uint32_t msg_id = (buff[0] << 24) + (buff[1] << 16) + (buff[2] << 8) + buff[3];
     uint16_t crc = crc16(buff, len - sizeof(uint16_t));
-    struct IExxxParamSyncRsp *p_param;
-    struct IExxxMeasureDataRsp *p_meas;
+    struct IE303lParamSyncRsp *p_param;
+    struct IE303lMeasureDataRsp *p_meas;
     uint8_t *p_data;
     int i;
     uint32_t range_data;
     uint32_t intensity_data;
-    struct IExxxIPConfigRsp *p_ip;
-    struct IExxxLidarReport *p_report;
-    struct IExxxParamConfigRsp *p_param_cfg;
-    struct IExxxFilterConfigRsp *p_filter_cfg;
+
+    struct IE303lLidarReport *p_report;
+    struct IE303lParamConfigRsp *p_param_cfg;
+    struct IE303lFilterConfigRsp *p_filter_cfg;
     if (crc != (buff[len - 1] << 8) + (buff[len - 2]))
     {
         ROS_WARN("crc error %04x, %02x, %02x\r\n", crc, buff[len - 2], buff[len - 1]);
@@ -302,9 +446,9 @@ void IExxx::dataCallback(uint8_t *buff, int len)
     ROS_INFO_ONCE("communication link established.");
     switch (msg_id)
     {
-    case IEXXX_PARA_SYNC_RSP:
+    case IE303L_PARA_SYNC_RSP:
         ROS_INFO("lidar parameter update.");
-        p_param = (struct IExxxParamSyncRsp *)buff;
+        p_param = (struct IE303lParamSyncRsp *)buff;
         if (lidar_param_.angle_min != (float)((int32_t)ntohl(p_param->start_angle) / 1000.0 * DEG2RAD - M_PI / 2))
         {
             lidar_param_.angle_min = (int32_t)ntohl(p_param->start_angle) / 1000.0 * DEG2RAD - M_PI / 2;
@@ -352,22 +496,16 @@ void IExxx::dataCallback(uint8_t *buff, int len)
         private_param_.resolution = ntohl(p_param->angular_resolution);
         break;
 
-    case IEXXX_PARA_CHANGED_IND_RSP:
-        updateParam();
-        break;
-
-    case IEXXX_PARA_DEVICE_CONFIGURATION_RSP:
-        p_param_cfg = (struct IExxxParamConfigRsp *)buff;
+    case IE303L_PARA_DEVICE_CONFIGURATION_RSP:
+        p_param_cfg = (struct IE303lParamConfigRsp *)buff;
         p_param_cfg->msg_id = ntohl(p_param_cfg->msg_id);
         p_param_cfg->error_no = ntohs(p_param_cfg->error_no);
         cfg_err_ = p_param_cfg->error_no;
         break;
 
-    case IEXXX_PARA_ALARM_CONFIGURATION_RSQ:
-        break;
-
-    case IEXXX_MEAS_DATA_PACKAGE_RSP:
-        p_meas = (struct IExxxMeasureDataRsp *)buff;
+    case IE303L_MEAS_DATA_PACKAGE_RSP:
+        ROS_INFO("lidar measure data recv");
+        p_meas = (struct IE303lMeasureDataRsp *)buff;
         p_data = p_meas->data;
         p_meas->msg_id = ntohl(p_meas->msg_id);
         p_meas->serial_num = ntohl(p_meas->serial_num);
@@ -429,11 +567,8 @@ void IExxx::dataCallback(uint8_t *buff, int len)
         }
         break;
 
-    case IEXXX_LOG_GET_RSP:
-        break;
-
-    case IEXXX_TIME_REPORT_INF:
-        p_report = (struct IExxxLidarReport *)buff;
+    case IE303L_TIME_REPORT_INF:
+        p_report = (struct IE303lLidarReport *)buff;
         if (lidar_param_.scan_time != (float)(1.0 / p_report->speed))
         {
             lidar_param_.scan_time = 1.0 / p_report->speed;
@@ -441,24 +576,11 @@ void IExxx::dataCallback(uint8_t *buff, int len)
         }
         break;
 
-    case IEXXX_ACTIVE_FILTER_RSP:
-        p_filter_cfg = (struct IExxxFilterConfigRsp *)buff;
+    case IE303L_ACTIVE_FILTER_RSP:
+        p_filter_cfg = (struct IE303lFilterConfigRsp *)buff;
         p_filter_cfg->msg_id = ntohl(p_filter_cfg->msg_id);
         p_filter_cfg->error_no = ntohs(p_filter_cfg->error_no);
         cfg_err_ = p_filter_cfg->error_no;
-        break;
-
-    case IEXXX_SET_CALIBRATION_MODE_RSP:
-        break;
-
-    case IEXXX_SET_NET_MODE_RSP:
-        break;
-
-    case IEXXX_SET_STATIC_IP_RSP:
-        p_ip = (struct IExxxIPConfigRsp *)buff;
-        p_ip->msg_id = ntohl(p_ip->msg_id);
-        p_ip->error_no = ntohs(p_ip->error_no);
-        cfg_err_ = p_ip->error_no;
         break;
 
     default:
@@ -466,7 +588,7 @@ void IExxx::dataCallback(uint8_t *buff, int len)
     }
 }
 
-const char *IExxx::err_str(uint16_t err_no)
+const char *IE303l::err_str(uint16_t err_no)
 {
     int i;
     for (i = 0; i < sizeof(err) / sizeof(err[0]); i++)

@@ -1,6 +1,6 @@
 // BSD 3-Clause License
 //
-// Copyright (c) 2020, TIANBOT
+// Copyright (c) 2019, TIANBOT
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -28,70 +28,33 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "ros/ros.h"
-#include "iexxx.h"
-#include "ie303l.h"
+#ifndef __SERIAL_H__
+#define __SERIAL_H__
 
-int main(int argc, char *argv[])
+#include "stdint.h"
+#include <pthread.h>
+#include "boost/bind.hpp"
+#include "boost/function.hpp"
+
+//using namespace boost;
+typedef boost::function<void(uint8_t *data, unsigned int data_len)> serial_recv_cb;
+
+class Serial
 {
-    OsightLidar *lidar;
+public:
+    bool open(const char *device, int rate, int flow_ctrl, int databits,
+              int stopbits, int parity, serial_recv_cb cb);
+    int send(uint8_t *data, int len);
+    void close(void);
 
-    std::string lidar_model;
+private:
+    bool config(int speed, int flow_ctrl, int databits, int stopbits,
+                int parity);
+    pthread_t recv_thread_;
+    static void *serial_recv(void *p);
+    int running_;
+    serial_recv_cb recv_cb_;
+    int fd_;
+};
 
-    ros::init(argc, argv, "osight_lidar_node");
-
-    //ros::NodeHandle nh("osight_lidar");
-    ros::NodeHandle nh("~");
-
-    nh.param<std::string>("lidar_model", lidar_model, DEFAULT_LIDAR_MODEL);
-
-    ros::Rate loop_rate(10);
-
-    if (lidar_model == "iexxx")
-    {
-        lidar = new IExxx(&nh);
-    }
-    else if(lidar_model == "ie303l")
-    {
-        lidar = new IE303l(&nh);
-    }
-    else
-    {
-        ROS_INFO("lidar [%s] driver not implemented", lidar_model.c_str());
-        exit(-1);
-    }
-
-    int count = 10;
-    while (--count)
-    {
-        if (lidar->init())
-        {
-            ROS_INFO("lidar [%s] communication link init successfully", lidar_model.c_str());
-            break;
-        }
-        else
-        {
-            ROS_WARN("lidar [%s] init failed, retry ...", lidar_model.c_str());
-            ros::Duration(1).sleep();
-        }
-    }
-    if (count == 0)
-    {
-        ROS_ERROR("lidar [%s] init failed, exit", lidar_model.c_str());
-        delete lidar;
-        return -1;
-    }
-    ros::Duration(1).sleep();
-    lidar->updateParam();
-    ros::Duration(1).sleep();
-    lidar->startTransferData();
-
-    while (ros::ok())
-    {
-        ros::spinOnce();
-        loop_rate.sleep();
-    }
-
-    delete lidar;
-    return 0;
-}
+#endif

@@ -28,67 +28,68 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef _IEXXX_H_
-#define _IEXXX_H_
+#ifndef _IE303L_H_
+#define _IE303L_H_
 
 #include "osight_lidar.h"
-#include "udp.h"
+#include "serial.h"
 #include "osight_lidar/Echo.h"
 #include "osight_lidar/Intensity.h"
 #include "osight_lidar/Outlier.h"
 #include "osight_lidar/Speed.h"
 #include "osight_lidar/Resolution.h"
-#include "osight_lidar/IPConfig.h"
+#include <arpa/inet.h> 
 
-#define IEXXX_DEFAULT_LIDAR_IP "192.168.1.10"
-#define IEXXX_DEFAULT_LIDAR_PORT 6500
-#define IEXXX_DEFAULT_HOST_PORT 5500
+#define PROTOCOL_HEAD_0 'I'
+#define PROTOCOL_HEAD_1 'E'
+#define PROTOCOL_TAIL_0 'O'
+#define PROTOCOL_TAIL_1 'S'
 
-#define IEXXX_DEFAULT_MAX_RANGES ((float)210000 / 10000)
-#define IEXXX_DEFAULT_MIN_RANGES ((float)0.01)
-#define IEXXX_DEFAULT_LIDAR_ANGLE_MIN ((float)(-45.0 * DEG2RAD - M_PI / 2))
-#define IEXXX_DEFAULT_LIDAR_ANGLE_MAX ((float)(225.0 * DEG2RAD - M_PI / 2))
-#define IEXXX_DEFAULT_ANGLE_INCREMENT ((float)(0.25 * DEG2RAD))
-#define IEXXX_DEFAULT_SCAN_TIME ((float)(1 / 25.0))
-#define IEXXX_DEFAULT_TIME_INCREMENT ((float)(IEXXX_DEFAULT_SCAN_TIME / (360 / 0.25)))
+#define IE303L_DEFAULT_LIDAR_SERIAL "/dev/ttyUSB0"
 
-enum IEXXX_MSG_ID
+
+#define IE303L_DEFAULT_MAX_RANGES ((float)210000 / 10000)
+#define IE303L_DEFAULT_MIN_RANGES ((float)0.01)
+#define IE303L_DEFAULT_LIDAR_ANGLE_MIN ((float)(-45.0 * DEG2RAD - M_PI / 2))
+#define IE303L_DEFAULT_LIDAR_ANGLE_MAX ((float)(225.0 * DEG2RAD - M_PI / 2))
+#define IE303L_DEFAULT_ANGLE_INCREMENT ((float)(0.25 * DEG2RAD))
+#define IE303L_DEFAULT_SCAN_TIME ((float)(1 / 25.0))
+#define IE303L_DEFAULT_TIME_INCREMENT ((float)(IE303L_DEFAULT_SCAN_TIME / (360 / 0.25)))
+
+enum IE303L_MSG_ID
 {
-    IEXXX_PARA_SYNC_REQ = 0x02000001,
-    IEXXX_PARA_SYNC_RSP = 0x02000002,
-    IEXXX_PARA_CHANGED_IND_RSP = 0x02000102,
-    IEXXX_PARA_DEVICE_CONFIGURATION_REQ = 0x02000201,
-    IEXXX_PARA_DEVICE_CONFIGURATION_RSP = 0x02000202,
-    IEXXX_PARA_ALARM_CONFIGURATION_REQ = 0x02000301,
-    IEXXX_PARA_ALARM_CONFIGURATION_RSQ = 0x02000302,
-    IEXXX_START_MEASURE_TRANSMISSION_REQ = 0x02000401,
-    IEXXX_MEAS_DATA_PACKAGE_RSP = 0x02000402,
-    IEXXX_LOG_GET_REQ = 0x02000501,
-    IEXXX_LOG_GET_RSP = 0x02000502,
-    IEXXX_TIME_REPORT_INF = 0x02000602,
-    IEXXX_ACTIVE_FILTER_REQ = 0x02000701,
-    IEXXX_ACTIVE_FILTER_RSP = 0x02000702,
-    IEXXX_SET_CALIBRATION_MODE_REQ = 0x02000801,
-    IEXXX_SET_CALIBRATION_MODE_RSP = 0x02000802,
-    IEXXX_SET_NET_MODE_REQ = 0x02000901,
-    IEXXX_SET_NET_MODE_RSP = 0x02000902,
-    IEXXX_SET_STATIC_IP_REQ = 0x02000A01,
-    IEXXX_SET_STATIC_IP_RSP = 0x02000A02,
+    IE303L_PARA_SYNC_REQ = 0x02000001,
+    IE303L_PARA_SYNC_RSP = 0x02000002,
+    IE303L_PARA_DEVICE_CONFIGURATION_REQ = 0x02000201,
+    IE303L_PARA_DEVICE_CONFIGURATION_RSP = 0x02000202,
+    IE303L_START_MEASURE_TRANSMISSION_REQ = 0x02000401,
+    IE303L_MEAS_DATA_PACKAGE_RSP = 0x02000402,
+    IE303L_TIME_REPORT_INF = 0x02000602,
+    IE303L_ACTIVE_FILTER_REQ = 0x02000701,
+    IE303L_ACTIVE_FILTER_RSP = 0x02000702,
+    IE303L_ANY_SHAPE_ALARM_PARA_REQ = 0x02001501,
+    IE303L_ANY_SHAPE_ALARM_PARA_RSP = 0x02001502,
+    IE303L_ALARM_PARA_REQ = 0x02001601,
+    IE303L_ALARM_PARA_REQ_RSP = 0x02001602,
+    IE303L_ALARM_FILTER_PARA_CONFIG_REQ = 0x02001701,
+    IE303L_ALARM_FILTER_PARA_CONFIG_RSP = 0x02001702,
+    IE303L_GET_ALARM_FILTER_PARA_REQ = 0x02001801,
+    IE303L_GET_ALARM_FILTER_PARA_RSP = 0x02001802,
 };
 
-#define IEXXX_START_DATA_TRANSFER 1
-#define IEXXX_STOP_DATA_TRANSFER 2
+#define IE303L_START_DATA_TRANSFER 1
+#define IE303L_STOP_DATA_TRANSFER 2
 
 #pragma pack(push)
 #pragma pack(1)
 
-struct IExxxParamSyncReq
+struct IE303lParamSyncReq
 {
     uint32_t msg_id;
     uint16_t crc;
 };
 
-struct IExxxParamSyncRsp
+struct IE303lParamSyncRsp
 {
     uint32_t msg_id;
     uint8_t mac[6];
@@ -122,7 +123,7 @@ struct IExxxParamSyncRsp
     uint16_t crc;
 };
 
-struct IExxxParaConfigurationReq
+struct IE303lParaConfigurationReq
 {
     uint32_t msg_id;
     uint8_t speed;
@@ -131,21 +132,21 @@ struct IExxxParaConfigurationReq
     uint16_t crc;
 };
 
-struct IExxxParaConfigurationRsp
+struct IE303lParaConfigurationRsp
 {
     uint32_t msg_id;
     uint16_t error_code;
     uint16_t crc;
 };
 
-struct IExxxStartMeasureTransmissionReq
+struct IE303lStartMeasureTransmissionReq
 {
     uint32_t msg_id;
     uint8_t function_id;
     uint16_t crc;
 };
 
-struct IExxxMeasureDataRsp
+struct IE303lMeasureDataRsp
 {
     uint32_t msg_id;
     uint8_t line_num;
@@ -176,26 +177,7 @@ struct IExxxMeasureDataRsp
     uint8_t data[]; //the last 2 byte are crc code
 };
 
-struct IExxxIPConfigReq
-{
-    uint32_t msg_id;
-    uint32_t dev_ip;
-    uint32_t dev_port;
-    uint32_t host_ip;
-    uint32_t host_port;
-    uint32_t mask;
-    uint32_t gateway;
-    uint16_t crc;
-};
-
-struct IExxxIPConfigRsp
-{
-    uint32_t msg_id;
-    uint16_t error_no;
-    uint16_t crc;
-};
-
-struct IExxxParamConfigReq
+struct IE303lParamConfigReq
 {
     uint32_t msg_id;
     uint8_t speed;
@@ -204,14 +186,14 @@ struct IExxxParamConfigReq
     uint16_t crc;
 };
 
-struct IExxxParamConfigRsp
+struct IE303lParamConfigRsp
 {
     uint32_t msg_id;
     uint16_t error_no;
     uint16_t crc;
 };
 
-struct IExxxFilterConfigReq
+struct IE303lFilterConfigReq
 {
     uint32_t msg_id;
     uint8_t outlier;
@@ -220,14 +202,14 @@ struct IExxxFilterConfigReq
     uint16_t crc;
 };
 
-struct IExxxFilterConfigRsp
+struct IE303lFilterConfigRsp
 {
     uint32_t msg_id;
     uint16_t error_no;
     uint16_t crc;
 };
 
-struct IExxxLidarReport
+struct IE303lLidarReport
 {
     uint32_t msg_id;
     uint8_t speed;
@@ -238,13 +220,13 @@ struct IExxxLidarReport
     uint16_t crc;
 };
 
-struct IExxxErrStr
+struct IE303lErrStr
 {
     uint16_t err_no;
     char const *err_str;
 };
 
-struct IExxxPrivateParam
+struct IE303lPrivateParam
 {
     uint8_t outlier;
     uint8_t echo;
@@ -256,17 +238,16 @@ struct IExxxPrivateParam
 
 #pragma pack(pop)
 
-class IExxx : public OsightLidar
+class IE303l : public OsightLidar
 {
 public:
-    IExxx(ros::NodeHandle *nh);
-    ~IExxx();
+    IE303l(ros::NodeHandle *nh);
+    ~IE303l();
     virtual bool init(void);
     virtual void updateParam(void);
     virtual void startTransferData(void);
     virtual void stopTransferData(void);
 
-    bool IPCfg(osight_lidar::IPConfig::Request &req, osight_lidar::IPConfig::Response &res);
     bool speedCfg(osight_lidar::Speed::Request &req, osight_lidar::Speed::Response &res);
     bool echoCfg(osight_lidar::Echo::Request &req, osight_lidar::Echo::Response &res);
     bool outlierCfg(osight_lidar::Outlier::Request &req, osight_lidar::Outlier::Response &res);
@@ -276,20 +257,18 @@ public:
 
 private:
     void dataCallback(uint8_t *buff, int len);
-    Udp *udp_;
+    void serialDataProc(uint8_t *buff, int len);
     vector<float> ranges;
     vector<float> intensities;
-    ros::ServiceServer IP_config_service_;
     ros::ServiceServer speed_config_service_;
     ros::ServiceServer echo_config_service_;
     ros::ServiceServer outlier_config_service_;
     ros::ServiceServer resolution_config_service_;
     ros::ServiceServer intensity_config_service_;
-    std::string lidar_ip_;
-    int host_port_;
-    int lidar_port_;
+    std::string lidar_serial_;
     uint16_t cfg_err_;
-    struct IExxxPrivateParam private_param_;
+    Serial *serial_;
+    struct IE303lPrivateParam private_param_;
 };
 
 #endif
