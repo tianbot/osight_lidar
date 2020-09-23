@@ -66,6 +66,8 @@ void OsightLidar::lidarDataCallback(vector<float> ranges, vector<float> intensit
     scan_msg.ranges.assign(ranges.begin() + start, ranges.begin() + end);
     scan_msg.intensities.assign(intensities.begin() + start, intensities.begin() + end);
     scan_pub_.publish(scan_msg);
+    timer_.stop();
+    timer_.start();
 }
 
 void OsightLidar::invertUint8(uint8_t *dest_buf, uint8_t *src_buf)
