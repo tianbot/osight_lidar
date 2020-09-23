@@ -112,6 +112,8 @@ private:
     ros::Publisher scan_pub_;
     void invertUint8(uint8_t *dest_buf, uint8_t *src_buf);
     void invertUint16(uint16_t *dest_buf, uint16_t *src_buf);
+    ros::Timer timer_;
+    void communicationTimeoutCallback(const ros::TimerEvent &);
 };
 
 #endif

@@ -39,7 +39,14 @@ OsightLidar::OsightLidar(ros::NodeHandle *nh) : nh_(*nh)
     scan_pub_ = nh_.advertise<sensor_msgs::LaserScan>("scan", 1);
     ROS_INFO("scan msg min angle %f", angle_min_);
     ROS_INFO("scan msg max angle %f", angle_max_);
+    timer_ = nh_.createTimer(ros::Duration(3), &OsightLidar::communicationTimeoutCallback, this);
 }
+
+void OsightLidar::communicationTimeoutCallback(const ros::TimerEvent &)
+{
+    ROS_INFO("Communication timeout, please check the link or hardware");
+}
+
 
 void OsightLidar::lidarDataCallback(vector<float> ranges, vector<float> intensities, struct LidarParam lidar_param)
 {
