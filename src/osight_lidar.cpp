@@ -47,7 +47,6 @@ void OsightLidar::communicationTimeoutCallback(const ros::TimerEvent &)
     ROS_INFO("Communication timeout, please check the link or hardware");
 }
 
-
 void OsightLidar::lidarDataCallback(vector<float> ranges, vector<float> intensities, struct LidarParam lidar_param)
 {
     sensor_msgs::LaserScan scan_msg;
@@ -64,6 +63,14 @@ void OsightLidar::lidarDataCallback(vector<float> ranges, vector<float> intensit
     int start = (angle_min_ - lidar_param.angle_min) / lidar_param.angle_increment;
     int end = (angle_max_ - lidar_param.angle_min) / lidar_param.angle_increment + 1;
     scan_msg.ranges.assign(ranges.begin() + start, ranges.begin() + end);
+    for (int i = 0; i < scan_msg.ranges.size(); ++i)
+    {
+        if (scan_msg.ranges[i] == 0.0)
+        {
+            scan_msg.ranges[i] = std::numeric_limits<float>::infinity();
+        }
+    }
+
     scan_msg.intensities.assign(intensities.begin() + start, intensities.begin() + end);
     scan_pub_.publish(scan_msg);
     timer_.stop();
