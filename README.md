@@ -43,10 +43,10 @@ cd ~/catkin_ws && catkin_make
 Make sure the power supply and ehternet connection are correct.
 
 ### Start osight_lidar node
-Launch the lidar.
+Launch the lidar 
 
 ```
-roslaunch osight_lidar osight_lidar.launch
+roslaunch osight_lidar osight_iexxx.launch
 ```
 
 ## Topics
